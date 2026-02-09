@@ -3,28 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Provelance | 宇宙因果观测终端</title>
+    <title>创世计划 | 因果观测终端</title>
     <script src="https://cdn.jsdelivr.net/npm/brython@3/brython.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/brython@3/brython_stdlib.js"></script>
     <style>
-        body { font-family: 'Courier New', monospace; background: #0d1117; color: #c9d1d9; padding: 20px; }
+        :root {
+            --gh-bg: #0d1117;
+            --gh-card: #161b22;
+            --gh-border: #30363d;
+            --gh-text: #c9d1d9;
+            --accent: #238636;
+        }
+        body { font-family: 'PingFang SC', 'Microsoft YaHei', 'Courier New', monospace; background: var(--gh-bg); color: var(--gh-text); padding: 20px; line-height: 1.6; }
         .container { max-width: 900px; margin: 0 auto; }
-        .header { display: flex; align-items: center; gap: 20px; margin-bottom: 30px; border-bottom: 1px solid #30363d; padding-bottom: 20px; }
-        .logo { width: 80px; height: 80px; border-radius: 50%; border: 2px solid #238636; }
-        .brand h1 { margin: 0; color: #238636; letter-spacing: 2px; }
-        .brand p { margin: 5px 0 0; font-size: 14px; color: #8b949e; }
-        #version-tag { font-size: 12px; background: #21262d; padding: 2px 8px; border-radius: 10px; color: #58a6ff; }
+        
+        /* 头部视觉调整 */
+        .header { display: flex; align-items: center; gap: 15px; margin-bottom: 30px; border-bottom: 1px solid var(--gh-border); padding-bottom: 20px; }
+        .logo { width: 60px; height: 60px; border-radius: 50%; border: 1.5px solid var(--accent); }
+        .brand h1 { margin: 0; font-size: 28px; color: var(--gh-text); letter-spacing: 1px; }
+        .brand .sub-title { font-size: 14px; color: var(--accent); font-weight: bold; letter-spacing: 3px; margin-top: -5px; opacity: 0.8; }
+        #version-tag { font-size: 11px; background: #21262d; padding: 2px 8px; border-radius: 10px; color: #58a6ff; margin-left: 10px; vertical-align: middle; }
 
-        .input-group { background: #161b22; padding: 20px; border-radius: 6px; border: 1px solid #30363d; margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
-        input { background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; padding: 8px; flex: 1; min-width: 200px; border-radius: 4px; }
-        button { background: #238636; color: #fff; border: none; padding: 8px 20px; cursor: pointer; font-weight: bold; border-radius: 4px; }
+        /* 输入区域 */
+        .input-group { background: var(--gh-card); padding: 20px; border-radius: 8px; border: 1px solid var(--gh-border); margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
+        input { background: var(--gh-bg); color: var(--gh-text); border: 1px solid var(--gh-border); padding: 10px; flex: 1; min-width: 200px; border-radius: 4px; font-size: 14px; }
+        input:focus { outline: none; border-color: #58a6ff; }
+        button { background: var(--accent); color: #fff; border: none; padding: 10px 25px; cursor: pointer; font-weight: bold; border-radius: 4px; transition: 0.2s; }
+        button:hover { background: #2ea043; }
         
-        #log-container { background: #000; border: 1px solid #333; height: 200px; overflow-y: auto; padding: 10px; font-size: 12px; color: #8b949e; margin-bottom: 20px; border-radius: 4px; }
+        /* 日志终端 */
+        #log-container { background: #000; border: 1px solid #333; height: 180px; overflow-y: auto; padding: 12px; font-size: 12px; color: #8b949e; margin-bottom: 20px; border-radius: 4px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
         .log-warn { color: #d29922; }
-        .log-success { color: #238636; }
+        .log-success { color: var(--accent); }
         .log-error { color: #f85149; }
+        .log-info { color: #58a6ff; }
         
-        pre { background: #161b22; padding: 15px; border-radius: 6px; overflow-x: auto; border: 1px solid #30363d; color: #a5d6ff; }
+        /* 状态展示 */
+        .state-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        h3 { margin: 0; font-size: 16px; color: #8b949e; }
+        pre { background: var(--gh-card); padding: 15px; border-radius: 8px; overflow-x: auto; border: 1px solid var(--gh-border); color: #a5d6ff; font-size: 14px; line-height: 1.4; }
+        
+        .footer-quote { text-align: center; margin-top: 40px; color: #484f58; font-size: 12px; border-top: 1px solid var(--gh-border); padding-top: 20px; }
     </style>
 </head>
 <body onload="brython(); initPage();">
@@ -33,19 +52,28 @@
     <div class="header">
         <img src="logo.png" class="logo" alt="Provelance Logo">
         <div class="brand">
-            <h1>PROVELANCE <span id="version-tag">v0.0.0</span></h1>
-            <p>"Code is Fate."</p>
+            <h1>创世计划 <span id="version-tag">载入中...</span></h1>
+            <div class="sub-title">PROVELANCE</div>
         </div>
     </div>
     
     <div class="input-group">
-        <input type="text" id="repoInput" placeholder="User/Repo (e.g., provelance/universe-test)">
-        <input type="password" id="tokenInput" placeholder="GitHub Token (将存储在本地浏览器)">
+        <input type="text" id="repoInput" placeholder="仓库地址 (用户名/仓库名)">
+        <input type="password" id="tokenInput" placeholder="GitHub 访问令牌 (Token)">
         <button onclick="startInference()">启动推演</button>
     </div>
 
-    <div id="log-container">系统就绪。</div>
+    <h3>因果链路日志:</h3>
+    <div id="log-container">系统准备就绪。等待接入宇宙历史记录...</div>
+    
+    <div class="state-header">
+        <h3>当前宇宙状态 (Final State):</h3>
+    </div>
     <pre id="output">{}</pre>
+
+    <div class="footer-quote">
+        "Code is Fate." —— 每一行代码都是不可逆的历史。
+    </div>
 </div>
 
 <script type="text/python">
@@ -53,12 +81,15 @@ from browser import window, console
 import traceback
 
 def execute_python_rule(user_code_str, state, params):
+    # 自动缩进包装
     lines = user_code_str.split('\n')
     indented_block = '\n'.join(['    ' + l for l in lines])
     wrapped_code = f"def logic(state, params):\n{indented_block}\n    return state"
+    
     loc = {}
     try:
         exec(wrapped_code, {}, loc)
+        # 调用包装后的函数
         return loc['logic'](state, params)
     except Exception as e:
         raise e
@@ -70,7 +101,7 @@ window.execute_python_rule = execute_python_rule
     const STORAGE_KEY_TOKEN = 'provelance_gh_token';
     const STORAGE_KEY_REPO = 'provelance_last_repo';
 
-    // 初始化页面：加载缓存
+    // 初始化页面：加载本地缓存
     async function initPage() {
         if (localStorage.getItem(STORAGE_KEY_TOKEN)) {
             document.getElementById('tokenInput').value = localStorage.getItem(STORAGE_KEY_TOKEN);
@@ -79,15 +110,17 @@ window.execute_python_rule = execute_python_rule
             document.getElementById('repoInput').value = localStorage.getItem(STORAGE_KEY_REPO);
         }
 
-        // 加载版本号
+        // 异步读取 meta.json
         try {
             const res = await fetch('meta.json');
             if (res.ok) {
                 const meta = await res.json();
                 document.getElementById('version-tag').textContent = `v${meta.version}`;
+            } else {
+                document.getElementById('version-tag').textContent = `v0.0.0`;
             }
         } catch (e) {
-            console.log("未找到 meta.json");
+            document.getElementById('version-tag').textContent = `v0.0.0`;
         }
     }
 
@@ -95,7 +128,7 @@ window.execute_python_rule = execute_python_rule
         const div = document.getElementById('log-container');
         const line = document.createElement('div');
         line.className = `log-${type}`;
-        line.textContent = `> ${msg}`;
+        line.textContent = `[${new Date().toLocaleTimeString()}] > ${msg}`;
         div.appendChild(line);
         div.scrollTop = div.scrollHeight;
     }
@@ -106,7 +139,7 @@ window.execute_python_rule = execute_python_rule
         const headers = token ? { 'Authorization': `token ${token}` } : {};
         while (true) {
             const res = await fetch(`https://api.github.com/repos/${repo}/commits?per_page=100&page=${page}`, { headers });
-            if (!res.ok) throw new Error(`访问失败: ${res.status} (检查Token权限)`);
+            if (!res.ok) throw new Error(`数据获取失败 (状态码: ${res.status})。请检查仓库名和 Token。`);
             const data = await res.json();
             if (data.length === 0) break;
             commits = commits.concat(data);
@@ -121,15 +154,16 @@ window.execute_python_rule = execute_python_rule
         const token = document.getElementById('tokenInput').value.trim();
         const output = document.getElementById('output');
         
-        // 存储到缓存
+        // 缓存输入信息
         localStorage.setItem(STORAGE_KEY_TOKEN, token);
         localStorage.setItem(STORAGE_KEY_REPO, repo);
 
         document.getElementById('log-container').innerHTML = '';
-        log("连接因果链...");
+        log("开始同步因果链...", "info");
 
         try {
             let commits = await fetchAllCommits(repo, token);
+            // 按照时间正序推演（从初创到现代）
             commits.reverse();
 
             let state = { errors: [] }; 
@@ -141,6 +175,7 @@ window.execute_python_rule = execute_python_rule
                 let title = splitIndex === -1 ? fullMsg : fullMsg.substring(0, splitIndex).trim();
                 let body = splitIndex === -1 ? "" : fullMsg.substring(splitIndex).trim();
 
+                // 仅处理带有指令分隔符的 Commit
                 if (!title.includes('|')) continue;
 
                 const [typeRaw, funcName] = title.split('|').map(s => s.trim());
@@ -148,29 +183,33 @@ window.execute_python_rule = execute_python_rule
 
                 if (type === 'RULE') {
                     registry[funcName] = body;
-                    log(`[RULE] 注册: ${funcName}`);
+                    log(`[规则注册] ${funcName}`);
                 } 
                 else if (type === 'ACTION') {
                     try {
-                        if (!registry[funcName]) throw new Error(`规则 ${funcName} 未定义`);
+                        if (!registry[funcName]) throw new Error(`规则 '${funcName}' 尚未定义`);
                         const params = body ? JSON.parse(body) : {};
+                        
+                        // 调用 Python 解释器执行
                         state = window.execute_python_rule(registry[funcName], state, params);
-                        log(`[ACTION] 执行成功: ${funcName}`, "success");
+                        log(`[指令执行] ${funcName} - 成功`, "success");
                     } catch (err) {
-                        // 容错逻辑：跳过错误函数并记录
-                        log(`[跳过] ${funcName} 失败: ${err.message}`, "warn");
+                        // 容错机制：记录错误并跳过，继续执行后续指令
+                        log(`[跳过指令] ${funcName} 失败: ${err.message}`, "warn");
                         state.errors.push({
                             sha: item.sha.substring(0, 7),
-                            func: funcName,
-                            msg: err.message
+                            action: funcName,
+                            error: err.message,
+                            date: item.commit.author.date
                         });
                     }
                 }
             }
             output.textContent = JSON.stringify(state, null, 4);
-            log("推演完成。", "success");
+            log("宇宙推演圆满完成。", "success");
         } catch (err) {
             log(err.message, "error");
+            output.textContent = JSON.stringify({ "系统错误": err.message }, null, 4);
         }
     }
 </script>
