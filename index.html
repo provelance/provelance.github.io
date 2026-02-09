@@ -188,16 +188,33 @@ window.execute_python_rule = execute_python_rule
                     log(`[RULE] 定义逻辑: ${funcName}`, "info");
                 } 
                 else if (type === 'ACTION') {
-                    if (!registry[funcName]) {
-                        throw new Error(`尝试调用未定义的函数: ${funcName} (Commit: ${item.sha.substring(0,7)})`);
+                    log(`[ACTION] 尝试执行: ${funcName}...`, "info");
+        
+                    try {
+                        if (!registry[funcName]) throw new Error(`找不到规则定义: ${funcName}`);
+                        
+                        const params = body ? JSON.parse(body) : {};
+                        
+                        // 执行 Python 逻辑
+                        state = window.execute_python_rule(registry[funcName], state, params);
+                        
+                        log(`[ACTION] 执行成功: ${funcName}`, "success");
+                    } catch (err) {
+                        // ✨ 核心改进：捕获错误但不中断循环
+                        log(`[跳过] 动作 ${funcName} 执行失败: ${err.message}`, "warn");
+                        
+                        // 可选：在 state 中记录这一笔失败，以便审计
+                        if (!state.errors) state.errors = [];
+                        state.errors.push({
+                            commit: item.sha.substring(0, 7),
+                            func: funcName,
+                            error: err.message,
+                            time: item.commit.author.date
+                        });
+                        
+                        // 继续循环，state 保持上一个成功的状态
+                        continue; 
                     }
-                    
-                    log(`[ACTION] 执行: ${funcName}`, "success");
-                    const params = body ? JSON.parse(body) : {};
-                    
-                    // 调用 Python 引擎
-                    // 注意：这里需要深拷贝 state，防止引用污染（虽然 JSON 转换本身就是深拷贝）
-                    state = window.execute_python_rule(registry[funcName], state, params);
                 }
             }
 
