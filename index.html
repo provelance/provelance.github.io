@@ -3,53 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Python Universe Observer v2.0</title>
+    <title>Provelance | 宇宙因果观测终端</title>
     <script src="https://cdn.jsdelivr.net/npm/brython@3/brython.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/brython@3/brython_stdlib.js"></script>
     <style>
         body { font-family: 'Courier New', monospace; background: #0d1117; color: #c9d1d9; padding: 20px; }
         .container { max-width: 900px; margin: 0 auto; }
-        .input-group { 
-            background: #161b22; padding: 20px; border-radius: 6px; border: 1px solid #30363d; margin-bottom: 20px;
-            display: flex; gap: 10px; flex-wrap: wrap;
-        }
-        input { 
-            background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; padding: 8px; flex: 1; min-width: 200px;
-            border-radius: 4px;
-        }
-        button { 
-            background: #238636; color: #fff; border: none; padding: 8px 20px; cursor: pointer; font-weight: bold; border-radius: 4px;
-        }
-        button:hover { background: #2ea043; }
+        .header { display: flex; align-items: center; gap: 20px; margin-bottom: 30px; border-bottom: 1px solid #30363d; padding-bottom: 20px; }
+        .logo { width: 80px; height: 80px; border-radius: 50%; border: 2px solid #238636; }
+        .brand h1 { margin: 0; color: #238636; letter-spacing: 2px; }
+        .brand p { margin: 5px 0 0; font-size: 14px; color: #8b949e; }
+        #version-tag { font-size: 12px; background: #21262d; padding: 2px 8px; border-radius: 10px; color: #58a6ff; }
+
+        .input-group { background: #161b22; padding: 20px; border-radius: 6px; border: 1px solid #30363d; margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
+        input { background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; padding: 8px; flex: 1; min-width: 200px; border-radius: 4px; }
+        button { background: #238636; color: #fff; border: none; padding: 8px 20px; cursor: pointer; font-weight: bold; border-radius: 4px; }
         
-        /* 终端风格日志 */
-        #log-container {
-            background: #000; border: 1px solid #333; height: 200px; overflow-y: auto; padding: 10px;
-            font-size: 12px; color: #8b949e; margin-bottom: 20px; border-radius: 4px;
-        }
-        .log-info { color: #58a6ff; }
+        #log-container { background: #000; border: 1px solid #333; height: 200px; overflow-y: auto; padding: 10px; font-size: 12px; color: #8b949e; margin-bottom: 20px; border-radius: 4px; }
+        .log-warn { color: #d29922; }
         .log-success { color: #238636; }
         .log-error { color: #f85149; }
-        .log-warn { color: #d29922; }
-
-        /* 状态输出 */
+        
         pre { background: #161b22; padding: 15px; border-radius: 6px; overflow-x: auto; border: 1px solid #30363d; color: #a5d6ff; }
     </style>
 </head>
-<body onload="brython()">
+<body onload="brython(); initPage();">
 
 <div class="container">
-    <h1>🪐 宇宙因果观测终端</h1>
+    <div class="header">
+        <img src="https://files.catbox.moe/k6x3at.png" class="logo">
+        <div class="brand">
+            <h1>PROVELANCE <span id="version-tag">v0.0.0</span></h1>
+            <p>"Code is Fate."</p>
+        </div>
+    </div>
     
     <div class="input-group">
-        <input type="text" id="repoInput" placeholder="User/Repo (e.g., yourname/universe)" value="">
-        <input type="password" id="tokenInput" placeholder="GitHub Token (可选,用于提高API限额)">
+        <input type="text" id="repoInput" placeholder="User/Repo (e.g., provelance/universe-test)">
+        <input type="password" id="tokenInput" placeholder="GitHub Token (将存储在本地浏览器)">
         <button onclick="startInference()">启动推演</button>
     </div>
 
-    <div id="log-container">系统就绪。等待连接因果链...</div>
-    
-    <h3>最终状态 (Current State):</h3>
+    <div id="log-container">系统就绪。</div>
     <pre id="output">{}</pre>
 </div>
 
@@ -58,48 +53,44 @@ from browser import window, console
 import traceback
 
 def execute_python_rule(user_code_str, state, params):
-    # 1. 自动缩进：将用户的每一行代码都向右缩进 4 个空格
     lines = user_code_str.split('\n')
-    indented_lines = ['    ' + line for line in lines]
-    indented_block = '\n'.join(indented_lines)
-
-    # 2. 构造包装器：自动加上 def logic... 和默认的 return state
-    # 我们在最后加一句 return state，防止用户忘记写返回值导致 state 变 None
-    wrapped_code = f"""
-def logic(state, params):
-{indented_block}
-    return state
-"""
-
-    # 3. 调试输出：在控制台打印生成的完整代码（方便排错）
-    # console.log("生成的代码:\n" + wrapped_code) 
-
-    # 4. 执行
+    indented_block = '\n'.join(['    ' + l for l in lines])
+    wrapped_code = f"def logic(state, params):\n{indented_block}\n    return state"
     loc = {}
     try:
         exec(wrapped_code, {}, loc)
-        
-        if 'logic' not in loc:
-            raise Exception("逻辑包装失败")
-            
-        # 调用函数
-        new_state = loc['logic'](state, params)
-        
-        # 再次兜底：如果用户显式写了 return 但没返回东西，new_state 可能是 None
-        if new_state is None:
-            return state
-        return new_state
-        
+        return loc['logic'](state, params)
     except Exception as e:
-        error_msg = f"{str(e)}\n{traceback.format_exc()}"
-        console.error(error_msg)
-        raise Exception(f"代码执行错误: {str(e)}")
+        raise e
 
 window.execute_python_rule = execute_python_rule
 </script>
 
 <script>
-    // 日志工具
+    const STORAGE_KEY_TOKEN = 'provelance_gh_token';
+    const STORAGE_KEY_REPO = 'provelance_last_repo';
+
+    // 初始化页面：加载缓存
+    async function initPage() {
+        if (localStorage.getItem(STORAGE_KEY_TOKEN)) {
+            document.getElementById('tokenInput').value = localStorage.getItem(STORAGE_KEY_TOKEN);
+        }
+        if (localStorage.getItem(STORAGE_KEY_REPO)) {
+            document.getElementById('repoInput').value = localStorage.getItem(STORAGE_KEY_REPO);
+        }
+
+        // 加载版本号
+        try {
+            const res = await fetch('meta.json');
+            if (res.ok) {
+                const meta = await res.json();
+                document.getElementById('version-tag').textContent = `v${meta.version}`;
+            }
+        } catch (e) {
+            console.log("未找到 meta.json");
+        }
+    }
+
     function log(msg, type = 'info') {
         const div = document.getElementById('log-container');
         const line = document.createElement('div');
@@ -109,28 +100,17 @@ window.execute_python_rule = execute_python_rule
         div.scrollTop = div.scrollHeight;
     }
 
-    // 递归获取所有 Commit（解决 Bug 1）
     async function fetchAllCommits(repo, token) {
         let commits = [];
         let page = 1;
         const headers = token ? { 'Authorization': `token ${token}` } : {};
-
         while (true) {
-            log(`正在拉取历史记录第 ${page} 页...`);
-            const url = `https://api.github.com/repos/${repo}/commits?per_page=100&page=${page}`;
-            const res = await fetch(url, { headers });
-            
-            if (!res.ok) {
-                if (res.status === 403) throw new Error("API 速率限制。请填写 Token 或稍后再试。");
-                if (res.status === 404) throw new Error("找不到仓库，请检查拼写或权限。");
-                throw new Error(`GitHub API Error: ${res.status}`);
-            }
-
+            const res = await fetch(`https://api.github.com/repos/${repo}/commits?per_page=100&page=${page}`, { headers });
+            if (!res.ok) throw new Error(`访问失败: ${res.status} (检查Token权限)`);
             const data = await res.json();
-            if (data.length === 0) break; // 没有更多数据了
-            
+            if (data.length === 0) break;
             commits = commits.concat(data);
-            if (data.length < 100) break; // 不足100条说明是最后一页
+            if (data.length < 100) break;
             page++;
         }
         return commits;
@@ -141,93 +121,58 @@ window.execute_python_rule = execute_python_rule
         const token = document.getElementById('tokenInput').value.trim();
         const output = document.getElementById('output');
         
-        document.getElementById('log-container').innerHTML = ''; // 清空日志
-        output.textContent = "推演中...";
+        // 存储到缓存
+        localStorage.setItem(STORAGE_KEY_TOKEN, token);
+        localStorage.setItem(STORAGE_KEY_REPO, repo);
 
-        if (!repo) return log("错误: 请输入仓库地址", "error");
+        document.getElementById('log-container').innerHTML = '';
+        log("连接因果链...");
 
         try {
-            // 1. 获取完整历史
             let commits = await fetchAllCommits(repo, token);
-            log(`因果链拉取完成，共 ${commits.length} 个节点。`, "success");
-            
-            // 2. 按时间正序排列 (Oldest -> Newest)
             commits.reverse();
 
-            // 3. 虚拟机初始化
-            let state = {}; 
+            let state = { errors: [] }; 
             const registry = {}; 
 
-            // 4. 逐个回放
             for (const item of commits) {
                 const fullMsg = item.commit.message;
-                
-                // 解决 Bug 2: 更健壮的分割逻辑
-                // 查找第一个换行符
                 const splitIndex = fullMsg.indexOf('\n');
-                let title, body;
-                
-                if (splitIndex === -1) {
-                    title = fullMsg;
-                    body = "";
-                } else {
-                    title = fullMsg.substring(0, splitIndex).trim();
-                    body = fullMsg.substring(splitIndex).trim();
-                }
+                let title = splitIndex === -1 ? fullMsg : fullMsg.substring(0, splitIndex).trim();
+                let body = splitIndex === -1 ? "" : fullMsg.substring(splitIndex).trim();
 
-                if (!title.includes('|')) continue; // 跳过普通 Commit
+                if (!title.includes('|')) continue;
 
-                const [type, funcName] = title.split('|').map(s => s.trim());
+                const [typeRaw, funcName] = title.split('|').map(s => s.trim());
+                const type = typeRaw.toUpperCase(); 
 
                 if (type === 'RULE') {
-                    if (!body) {
-                        log(`跳过空规则: ${funcName}`, "warn");
-                        continue;
-                    }
-                    registry[funcName] = body; // 存储 Python 源码
-                    log(`[RULE] 定义逻辑: ${funcName}`, "info");
+                    registry[funcName] = body;
+                    log(`[RULE] 注册: ${funcName}`);
                 } 
                 else if (type === 'ACTION') {
-                    log(`[ACTION] 尝试执行: ${funcName}...`, "info");
-        
                     try {
-                        if (!registry[funcName]) throw new Error(`找不到规则定义: ${funcName}`);
-                        
+                        if (!registry[funcName]) throw new Error(`规则 ${funcName} 未定义`);
                         const params = body ? JSON.parse(body) : {};
-                        
-                        // 执行 Python 逻辑
                         state = window.execute_python_rule(registry[funcName], state, params);
-                        
                         log(`[ACTION] 执行成功: ${funcName}`, "success");
                     } catch (err) {
-                        // ✨ 核心改进：捕获错误但不中断循环
-                        log(`[跳过] 动作 ${funcName} 执行失败: ${err.message}`, "warn");
-                        
-                        // 可选：在 state 中记录这一笔失败，以便审计
-                        if (!state.errors) state.errors = [];
+                        // 容错逻辑：跳过错误函数并记录
+                        log(`[跳过] ${funcName} 失败: ${err.message}`, "warn");
                         state.errors.push({
-                            commit: item.sha.substring(0, 7),
+                            sha: item.sha.substring(0, 7),
                             func: funcName,
-                            error: err.message,
-                            time: item.commit.author.date
+                            msg: err.message
                         });
-                        
-                        // 继续循环，state 保持上一个成功的状态
-                        continue; 
                     }
                 }
             }
-
-            // 5. 输出结果
             output.textContent = JSON.stringify(state, null, 4);
-            log("宇宙当前状态已同步。", "success");
-
+            log("推演完成。", "success");
         } catch (err) {
             log(err.message, "error");
-            output.textContent = JSON.stringify({ ERROR: err.message }, null, 4);
         }
     }
 </script>
-
 </body>
 </html>
