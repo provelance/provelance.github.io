@@ -2,133 +2,133 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>宇宙因果控制终端 | Deep Observation v3.2</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Provelance 宇宙因果控制终端</title>
     <script src="https://cdn.jsdelivr.net/npm/brython@3/brython.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/brython@3/brython_stdlib.js"></script>
     <style>
-        :root { --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --accent: #238636; --blue: #58a6ff; --red: #da3633; --orange: #d29922; }
-        body { font-family: 'Consolas', 'Segoe UI', monospace; background: var(--bg); color: var(--text); margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        :root { --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --accent: #238636; --blue: #58a6ff; --red: #da3633; }
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Consolas", monospace; background: var(--bg); color: var(--text); margin: 0; padding: 0; display: flex; flex-direction: column; min-height: 100vh; }
         
-        /* 顶部导航与 V3.1 保持一致，微调布局 */
-        .navbar { background: #010409; border-bottom: 1px solid var(--border); padding: 10px 20px; display: flex; align-items: center; gap: 15px; height: 50px; z-index: 100; }
-        .logo { font-weight: bold; color: var(--text); letter-spacing: 1px; font-size: 16px; }
+        /* 响应式导航 */
+        .navbar { background: #010409; border-bottom: 1px solid var(--border); padding: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+        .logo { font-weight: bold; font-size: 14px; white-space: nowrap; }
         .logo span { color: var(--accent); }
-        .config-area { margin-left: auto; display: flex; gap: 10px; }
-        input.config { background: #0d1117; border: 1px solid var(--border); color: var(--text); padding: 5px 10px; border-radius: 4px; width: 160px; font-size: 11px; }
-        button.connect-btn { background: var(--border); color: var(--text); border: none; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-size: 11px; }
-        button.connect-btn:hover { background: var(--blue); }
+        .config-area { flex: 1; display: flex; gap: 5px; min-width: 280px; }
+        input.config { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 6px; border-radius: 4px; flex: 1; font-size: 12px; }
+        button.connect-btn { background: var(--border); color: var(--text); border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; white-space: nowrap; font-size: 12px; }
 
-        .main-layout { display: grid; grid-template-columns: 240px 1fr 400px; flex: 1; min-height: 0; }
-        .panel { border-right: 1px solid var(--border); display: flex; flex-direction: column; background: var(--bg); }
-        .panel-header { padding: 10px 15px; font-size: 11px; font-weight: bold; color: #8b949e; border-bottom: 1px solid var(--border); background: #161b22; }
-        .panel-body { flex: 1; overflow-y: auto; }
+        /* 响应式主布局 */
+        .main-layout { display: flex; flex: 1; overflow: hidden; }
+        @media (max-width: 850px) { .main-layout { flex-direction: column; overflow: auto; } }
 
-        /* 左栏：规则列表 */
-        .rule-item { padding: 10px 15px; border-bottom: 1px solid var(--border); cursor: pointer; font-size: 12px; }
-        .rule-item:hover { background: var(--card); }
+        .panel { display: flex; flex-direction: column; border-right: 1px solid var(--border); background: var(--bg); }
+        .panel-header { padding: 10px; font-size: 11px; font-weight: bold; color: #8b949e; background: #161b22; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; }
 
-        /* 中栏：编辑器 */
-        .editor-wrapper { display: flex; flex-direction: column; height: 100%; }
-        textarea#code-editor { flex: 1; background: #0d1117; color: #e6edf3; border: none; padding: 20px; font-family: 'Consolas', monospace; font-size: 14px; outline: none; }
-        .commit-bar { padding: 10px 15px; border-top: 1px solid var(--border); background: var(--card); display: flex; justify-content: space-between; align-items: center; }
+        /* 侧边栏宽度控制 */
+        .panel-registry { width: 200px; }
+        .panel-editor { flex: 1; min-width: 350px; }
+        .panel-timeline { width: 350px; border-right: none; }
+        @media (max-width: 850px) { .panel-registry, .panel-editor, .panel-timeline { width: 100%; min-width: 0; border-right: none; border-bottom: 1px solid var(--border); } .panel-timeline { height: 500px; } }
 
-        /* 右栏：时间线增强版 */
-        .timeline-container { flex: 1; overflow-y: auto; padding: 10px; background: #010409; }
-        .timeline-item { border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px; background: var(--card); overflow: hidden; }
-        .t-header { padding: 8px 12px; font-size: 11px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); }
-        .t-header:hover { background: rgba(255,255,255,0.08); }
-        .t-body { display: none; padding: 12px; border-top: 1px solid var(--border); background: #0d1117; font-size: 12px; }
-        .t-body.active { display: block; }
-        
+        /* 法则列表 */
+        .rule-item { padding: 8px 12px; border-bottom: 1px solid var(--border); cursor: pointer; font-size: 12px; transition: 0.2s; }
+        .rule-item:hover { background: var(--card); color: var(--blue); }
+
+        /* 编辑器区域 */
+        .editor-container { display: flex; flex-direction: column; height: 100%; background: #0d1117; }
+        .toolbar { padding: 10px; display: flex; gap: 8px; border-bottom: 1px solid var(--border); background: var(--card); }
+        select, .name-input { background: var(--bg); border: 1px solid var(--border); color: white; padding: 6px; border-radius: 4px; font-size: 13px; }
+        #code-editor { flex: 1; background: transparent; color: #e6edf3; border: none; padding: 15px; font-family: 'Consolas', monospace; font-size: 14px; resize: none; min-height: 200px; }
+        .footer-bar { padding: 10px; border-top: 1px solid var(--border); background: var(--card); display: flex; justify-content: space-between; align-items: center; }
+
+        /* 时间线增强 */
+        .timeline-scroll { flex: 1; overflow-y: auto; background: #010409; padding: 10px; }
+        .timeline-item { border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; background: var(--card); }
+        .t-head { padding: 8px; font-size: 11px; cursor: pointer; display: flex; justify-content: space-between; }
+        .t-body { display: none; padding: 10px; background: #000; border-top: 1px solid var(--border); font-size: 12px; }
+        .active { display: block; }
         .type-RULE { border-left: 4px solid var(--blue); }
         .type-ACTION { border-left: 4px solid var(--accent); }
-        .type-ERROR { border-left: 4px solid var(--red); border-color: var(--red); }
-        
-        .code-block { background: #000; padding: 10px; border-radius: 4px; color: #d1d5da; white-space: pre-wrap; word-break: break-all; margin: 0; border: 1px solid #30363d; font-size: 11px; }
-        .stack-trace { color: #f85149; font-family: 'Consolas', monospace; font-size: 11px; margin-top: 8px; border-top: 1px dashed #444; padding-top: 8px; }
+        .type-ERROR { border-left: 4px solid var(--red); }
+        pre.code { margin: 0; white-space: pre-wrap; word-break: break-all; color: #8b949e; font-size: 11px; }
 
-        /* 状态面板 */
-        .state-panel { height: 250px; border-top: 2px solid var(--border); background: #000; padding: 10px; overflow: auto; }
-        pre#final-state { margin: 0; color: #a5d6ff; font-size: 12px; }
+        /* 状态看板 */
+        .state-view { height: 180px; background: #000; border-top: 2px solid var(--border); padding: 10px; overflow: auto; font-size: 12px; color: #a5d6ff; }
+        
+        /* 交互元素 */
+        .btn-main { background: var(--accent); color: white; border: none; padding: 8px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        .btn-main:disabled { opacity: 0.5; }
     </style>
 </head>
 <body onload="brython(); init();">
 
     <div class="navbar">
-        <div class="logo">🌌 <span>Provelance</span> 因果控制终端 <small style="opacity:0.5; font-size:10px;">v3.2 Deep Observation</small></div>
+        <div class="logo">🌌 <span id="universe-name">待定</span> 宇宙终端</div>
         <div class="config-area">
-            <input type="text" id="repo" class="config" placeholder="用户/仓库">
-            <input type="password" id="token" class="config" placeholder="Github Token">
-            <button class="connect-btn" onclick="syncUniverse()">🔌 重新同步</button>
+            <input type="text" id="repo" class="config" placeholder="用户/仓库" oninput="updateUniverseName()">
+            <input type="password" id="token" class="config" placeholder="Token">
+            <button class="connect-btn" onclick="syncUniverse()">🔌 同步</button>
         </div>
     </div>
 
     <div class="main-layout">
-        <div class="panel">
-            <div class="panel-header">法则注册表 (REGISTRY)</div>
-            <div class="panel-body" id="rule-list"></div>
+        <div class="panel panel-registry">
+            <div class="panel-header">法则 (REGISTRY)</div>
+            <div id="rule-list" class="panel-body"></div>
         </div>
 
-        <div class="panel">
-            <div class="editor-wrapper">
-                <div style="padding:10px; border-bottom:1px solid var(--border); display:flex; gap:10px;">
-                    <select id="commit-type" onchange="loadTemplate()">
-                        <option value="ACTION">🚀 触发动作 (ACTION)</option>
-                        <option value="RULE">⚖️ 定义法则 (RULE)</option>
+        <div class="panel panel-editor">
+            <div class="editor-container">
+                <div class="toolbar">
+                    <select id="commit-type" onchange="onTypeChange()">
+                        <option value="ACTION">🚀 触发动作</option>
+                        <option value="RULE">⚖️ 定义法则</option>
                     </select>
-                    <input type="text" id="commit-name" style="flex:1; background:transparent; border:1px solid var(--border); color:white; padding:4px 8px;" placeholder="函数名">
+                    <div id="name-container" style="flex:1; display:flex;">
+                        <select id="action-selector" class="name-input" style="flex:1; display:none;"></select>
+                        <input type="text" id="rule-input" class="name-input" style="flex:1;" placeholder="函数名">
+                    </div>
                 </div>
                 <textarea id="code-editor"></textarea>
-                <div class="commit-bar">
-                    <span id="sync-status" style="font-size:10px; color:#666;">就绪</span>
-                    <button id="btn-submit" class="commit-btn" onclick="commit()" style="background:var(--accent); color:white; border:none; padding:8px 16px; border-radius:4px; cursor:pointer;">⚡ 写入因果</button>
+                <div class="footer-bar">
+                    <small id="status-text" style="opacity:0.5; font-size:10px;">就绪</small>
+                    <button id="btn-submit" class="btn-main" onclick="commit()">⚡ 写入因果</button>
                 </div>
             </div>
         </div>
 
-        <div class="panel">
-            <div class="panel-header">宇宙时间线 (TIMELINE)</div>
-            <div class="timeline-container" id="timeline"></div>
-            <div class="panel-header">当前宇宙态 (STATE)</div>
-            <div class="state-panel">
+        <div class="panel panel-timeline">
+            <div class="panel-header">演化史 (TIMELINE)</div>
+            <div id="timeline" class="timeline-scroll"></div>
+            <div class="panel-header">观测态 (STATE)</div>
+            <div class="state-view">
                 <pre id="final-state">{}</pre>
             </div>
         </div>
     </div>
 
     <script type="text/python">
-    from browser import window, console
-    import ast
-    import traceback
-    import sys
+    from browser import window
+    import ast, traceback, sys
 
-    def parse_params(data_str):
-        if not data_str or not data_str.strip(): return {}
-        try:
-            return ast.literal_eval(data_str)
-        except Exception:
-            return None
+    def parse_params(s):
+        if not s or not s.strip(): return {}
+        try: return ast.literal_eval(s)
+        except: return None
 
-    def execute_python_rule(user_code_str, state, params):
-        lines = user_code_str.split('\n')
-        indented = '\n'.join(['    ' + l for l in lines])
-        # 包装代码，显式抛出错误以供捕获
-        wrapped = f"import traceback\ndef logic(state, params):\n{indented}\n    return state"
+    def execute_logic(code, state, params):
+        wrapped = f"def logic(state, params):\n" + "\n".join(["    " + l for l in code.split('\n')]) + "\n    return state"
         loc = {}
         try:
             exec(wrapped, {}, loc)
             return loc['logic'](state, params)
-        except Exception:
-            # 获取详细的 Python 堆栈
+        except:
             etype, value, tb = sys.exc_info()
-            stack = traceback.format_exception(etype, value, tb)
-            # 过滤掉包装器的内部堆栈，保留用户代码报错部分
-            clean_stack = "".join(stack)
-            raise Exception(clean_stack)
+            return Exception("".join(traceback.format_exception(etype, value, tb)))
 
-    window.parse_params = parse_params
-    window.execute_python_rule = execute_python_rule
+    window.python_engine = {"parse": parse_params, "run": execute_logic}
     </script>
 
     <script>
@@ -138,13 +138,41 @@
         function init() {
             document.getElementById('repo').value = localStorage.getItem('provelance_repo') || '';
             document.getElementById('token').value = localStorage.getItem('provelance_token') || '';
-            loadTemplate();
+            updateUniverseName();
+            onTypeChange();
         }
 
-        function loadTemplate() {
+        function updateUniverseName() {
+            const val = document.getElementById('repo').value;
+            document.getElementById('universe-name').innerText = val ? val.split('/').pop() : '待定';
+        }
+
+        function onTypeChange() {
             const type = document.getElementById('commit-type').value;
+            const actionSelect = document.getElementById('action-selector');
+            const ruleInput = document.getElementById('rule-input');
             const editor = document.getElementById('code-editor');
-            editor.value = type === 'RULE' ? "state['key'] = params.get('val')\nreturn state" : "{\n    'val': 100\n}";
+
+            if (type === 'ACTION') {
+                actionSelect.style.display = 'block';
+                ruleInput.style.display = 'none';
+                updateActionDropdown();
+                editor.value = "{\n    'key': 'value'\n}";
+            } else {
+                actionSelect.style.display = 'none';
+                ruleInput.style.display = 'block';
+                editor.value = "return state";
+            }
+        }
+
+        function updateActionDropdown() {
+            const select = document.getElementById('action-selector');
+            select.innerHTML = '';
+            Object.keys(registry).forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = opt.text = name;
+                select.appendChild(opt);
+            });
         }
 
         async function syncUniverse() {
@@ -154,91 +182,78 @@
             localStorage.setItem('provelance_repo', repo);
             localStorage.setItem('provelance_token', token);
 
-            const timelineDiv = document.getElementById('timeline');
-            timelineDiv.innerHTML = '<div style="font-size:12px; color:#666; text-align:center; padding:20px;">同步中...</div>';
+            const timeline = document.getElementById('timeline');
+            timeline.innerHTML = '<div style="text-align:center; padding:20px; font-size:12px;">同步中...</div>';
 
             try {
                 let commits = [];
                 let page = 1;
                 const headers = token ? { 'Authorization': `token ${token}` } : {};
-
                 while(true) {
                     const res = await fetch(`https://api.github.com/repos/${repo}/commits?per_page=100&page=${page}`, { headers });
                     const data = await res.json();
-                    if (!data.length) break;
+                    if(!data.length) break;
                     commits = commits.concat(data);
-                    if (data.length < 100) break;
+                    if(data.length < 100) break;
                     page++;
                 }
                 commits.reverse();
 
                 let state = {};
                 registry = {};
-                timelineDiv.innerHTML = '';
-                const ruleListDiv = document.getElementById('rule-list');
-                ruleListDiv.innerHTML = '';
-
-                for (const item of commits) {
-                    const fullMsg = item.commit.message;
-                    const splitIndex = fullMsg.indexOf('\n');
-                    let title = (splitIndex === -1 ? fullMsg : fullMsg.substring(0, splitIndex)).trim();
-                    let body = (splitIndex === -1 ? "" : fullMsg.substring(splitIndex)).trim();
-
-                    if (!title.includes('|')) continue;
-                    const [type, funcName] = title.split('|').map(s => s.trim());
-                    const time = new Date(item.commit.author.date).toLocaleTimeString();
-
+                timeline.innerHTML = '';
+                
+                for(const item of commits) {
+                    const msg = item.commit.message;
+                    const [head, ...bodyArr] = msg.split('\n');
+                    const body = bodyArr.join('\n').trim();
+                    if(!head.includes('|')) continue;
+                    
+                    const [type, funcName] = head.split('|').map(s => s.trim());
                     const card = document.createElement('div');
                     card.className = `timeline-item type-${type}`;
                     
-                    let contentMarkup = '';
-                    let isError = false;
-                    let errorTrace = '';
+                    let html = `<div class="t-head" onclick="this.nextElementSibling.classList.toggle('active')">
+                                    <span>${type === 'RULE' ? '⚖️' : '🚀'} ${funcName}</span>
+                                    <small style="opacity:0.5">${new Date(item.commit.author.date).toLocaleTimeString()}</small>
+                                </div><div class="t-body">`;
 
-                    if (type === 'RULE') {
+                    if(type === 'RULE') {
                         registry[funcName] = body;
-                        contentMarkup = `<pre class="code-block">${body}</pre>`;
+                        html += `<pre class="code">${body}</pre>`;
                     } else {
-                        try {
-                            const params = window.parse_params(body);
-                            if (params === null) throw new Error("JSON/Dict 语法错误，请检查单引号或括号");
-                            state = window.execute_python_rule(registry[funcName], state, params);
-                            contentMarkup = `<div><strong>参数:</strong></div><pre class="code-block">${body}</pre>`;
-                        } catch (e) {
-                            isError = true;
-                            card.className = 'timeline-item type-ERROR';
-                            errorTrace = e.message;
-                            contentMarkup = `<div><strong>异常现场:</strong></div><pre class="code-block">${body}</pre><div class="stack-trace"><strong>详细堆栈:</strong><br>${errorTrace.replace(/\n/g, '<br>')}</div>`;
+                        const params = window.python_engine.parse(body);
+                        const result = window.python_engine.run(registry[funcName] || "", state, params);
+                        if(result instanceof Error) {
+                            card.className += ' type-ERROR';
+                            html += `<div style="color:var(--red)">塌缩: ${result.message}</div><pre class="code">${body}</pre>`;
+                        } else {
+                            state = result;
+                            html += `<pre class="code">参数: ${body}</pre>`;
                         }
                     }
-
-                    card.innerHTML = `
-                        <div class="t-header" onclick="this.nextElementSibling.classList.toggle('active')">
-                            <span>${isError ? '❌' : (type === 'RULE' ? '⚖️' : '🚀')} ${funcName}</span>
-                            <span style="opacity:0.5">${time} ▼</span>
-                        </div>
-                        <div class="t-body">${contentMarkup}</div>
-                    `;
-                    timelineDiv.insertBefore(card, timelineDiv.firstChild);
+                    card.innerHTML = html + `</div>`;
+                    timeline.insertBefore(card, timeline.firstChild);
                 }
 
-                // 刷新规则库
-                Object.keys(registry).reverse().forEach(key => {
+                document.getElementById('final-state').innerText = JSON.stringify(state, null, 2);
+                const ruleList = document.getElementById('rule-list');
+                ruleList.innerHTML = '';
+                Object.keys(registry).reverse().forEach(name => {
                     const d = document.createElement('div');
                     d.className = 'rule-item';
-                    d.innerText = key;
+                    d.innerText = name;
                     d.onclick = () => {
                         document.getElementById('commit-type').value = 'RULE';
-                        document.getElementById('commit-name').value = key;
-                        document.getElementById('code-editor').value = registry[key];
+                        document.getElementById('rule-input').value = name;
+                        document.getElementById('code-editor').value = registry[name];
+                        onTypeChange();
                     };
-                    ruleListDiv.appendChild(d);
+                    ruleList.appendChild(d);
                 });
-
-                document.getElementById('final-state').innerText = JSON.stringify(state, null, 2);
-                document.getElementById('sync-status').innerText = "已与因果链同步";
-
-            } catch (e) {
+                updateActionDropdown();
+                document.getElementById('status-text').innerText = "同步完成";
+            } catch(e) {
                 alert("同步失败: " + e.message);
             }
         }
@@ -247,38 +262,31 @@
             const repo = document.getElementById('repo').value;
             const token = document.getElementById('token').value;
             const type = document.getElementById('commit-type').value;
-            const name = document.getElementById('commit-name').value;
+            const name = type === 'ACTION' ? document.getElementById('action-selector').value : document.getElementById('rule-input').value;
             const body = document.getElementById('code-editor').value;
             const btn = document.getElementById('btn-submit');
 
-            if(!name || !token) return alert("配置缺失");
+            if(!name || !token) return alert("信息不全");
             btn.disabled = true;
-            btn.innerText = "写入中...";
+            btn.innerText = "...";
 
             try {
                 let sha = null;
-                const getRes = await fetch(`https://api.github.com/repos/${repo}/contents/${LOG_FILE}`, {
-                    headers: { 'Authorization': `token ${token}` }
-                });
-                if (getRes.ok) sha = (await getRes.json()).sha;
+                const getRes = await fetch(`https://api.github.com/repos/${repo}/contents/${LOG_FILE}`, { headers: {'Authorization': `token ${token}`} });
+                if(getRes.ok) sha = (await getRes.json()).sha;
 
                 const res = await fetch(`https://api.github.com/repos/${repo}/contents/${LOG_FILE}`, {
                     method: 'PUT',
-                    headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        message: `${type} | ${name}\n\n${body}`,
-                        content: btoa(`Sync: ${Date.now()}`),
-                        sha: sha
-                    })
+                    headers: {'Authorization': `token ${token}`, 'Content-Type': 'application/json'},
+                    body: JSON.stringify({ message: `${type} | ${name}\n\n${body}`, content: btoa(`T: ${Date.now()}`), sha: sha })
                 });
 
                 if(!res.ok) throw new Error("写入失败");
-                btn.innerText = "✅ 成功";
+                btn.innerText = "✅";
                 setTimeout(() => { btn.disabled = false; btn.innerText = "⚡ 写入因果"; syncUniverse(); }, 1500);
-            } catch (e) {
+            } catch(e) {
                 alert(e.message);
                 btn.disabled = false;
-                btn.innerText = "⚡ 写入因果";
             }
         }
     </script>
