@@ -107,20 +107,38 @@
 
 <script type="text/python">
 from browser import window, console
+import ast # 导入 AST 模块用于安全解析
+
+def parse_params(data_str):
+    """灵活解析参数：支持单引号、双引号、None/True/False"""
+    if not data_str or not data_str.strip():
+        return {}
+    try:
+        # 使用 literal_eval 比 json.parse 更灵活且安全
+        return ast.literal_eval(data_str)
+    except Exception as e:
+        # 如果解析失败，抛出更友好的错误
+        raise ValueError(f"参数格式非法: {str(e)}")
 
 def execute_python_rule(user_code_str, state, params):
-    # 自动包装执行器
+    # 1. 自动包装：支持多行缩进并强制兜底返回 state
     lines = user_code_str.split('\n')
     indented_block = '\n'.join(['    ' + l for l in lines])
+    
+    # 我们在包装中增加一行 'return state'，防止用户忘记 return 导致 state 变 undefined
     wrapped_code = f"def logic(state, params):\n{indented_block}\n    return state"
     
     loc = {}
     try:
         exec(wrapped_code, {}, loc)
-        return loc['logic'](state, params)
+        new_state = loc['logic'](state, params)
+        # 确保返回值不为 None（修复读取 push 报错的关键）
+        return new_state if new_state is not None else state
     except Exception as e:
         raise e
 
+# 挂载到 window 供 JS 调用
+window.parse_params = parse_params
 window.execute_python_rule = execute_python_rule
 </script>
 
@@ -202,7 +220,7 @@ window.execute_python_rule = execute_python_rule
                 else if (type === 'ACTION') {
                     try {
                         if (!registry[funcName]) throw new Error(`指令 '${funcName}' 未在因果链中定义`);
-                        const params = body ? JSON.parse(body) : {};
+                        const params = window.parse_params(body);
                         state = window.execute_python_rule(registry[funcName], state, params);
                         log(`[执行成功] 指令: ${funcName}`, "ACTION");
                     } catch (err) {
