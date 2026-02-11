@@ -3,127 +3,95 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Provelance v5.3 | Mobile</title>
+<title>Provelance v5.4</title>
 <script src="https://cdn.jsdelivr.net/npm/brython@3/brython.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/brython@3/brython_stdlib.js"></script>
 <style>
 :root{--bg:#0d1117;--c:#161b22;--b:#30363d;--t:#c9d1d9;--a:#238636;--bl:#58a6ff;--r:#da3633;--g:#d29922}
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;outline:none}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{font-family:-apple-system,monospace;background:var(--bg);color:var(--t);margin:0;display:flex;flex-direction:column;height:100vh;overflow:hidden}
-/* 顶部配置条 */
-.top{background:#010409;border-bottom:1px solid var(--b);padding:8px;display:flex;gap:8px;z-index:9}
-.in{background:#0d1117;border:1px solid var(--b);color:#fff;padding:6px;border-radius:4px;font-size:12px;flex:1;min-width:0}
-.btn{background:var(--b);color:#fff;border:none;padding:6px 10px;border-radius:4px;font-size:12px;white-space:nowrap}
-/* 主视图容器 */
+.top{background:#010409;border-bottom:1px solid var(--b);padding:5px;display:flex;gap:5px;z-index:9}
+.in{background:#0d1117;border:1px solid var(--b);color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;flex:1;min-width:0}
+.btn{background:var(--b);color:#fff;border:none;padding:5px 10px;border-radius:4px;font-size:12px}
 .main{flex:1;position:relative;overflow:hidden;display:flex;flex-direction:column}
 .view{position:absolute;top:0;left:0;width:100%;height:100%;display:none;flex-direction:column;background:var(--bg)}
 .view.act{display:flex}
-/* 底部导航 */
-.nav{height:50px;background:var(--c);border-top:1px solid var(--b);display:flex;justify-content:space-around;align-items:center}
-.nav-i{display:flex;flex-direction:column;align-items:center;font-size:10px;color:#666;gap:2px}
-.nav-i.on{color:var(--bl);font-weight:bold}
-.nav-i span{font-size:18px}
-/* 1. 观测页 (Timeline) */
-.tl{flex:1;overflow-y:auto;padding:10px}
-.tc{background:var(--c);border:1px solid var(--b);border-radius:6px;margin-bottom:8px;font-size:12px}
-.th{padding:8px;display:flex;justify-content:space-between;background:#ffffff05}
-.tb{padding:10px;border-top:1px solid var(--b);white-space:pre-wrap;word-break:break-all;font-family:monospace;color:#8b949e;display:none}
+.nav{height:45px;background:var(--c);border-top:1px solid var(--b);display:flex;justify-content:space-around;align-items:center}
+.nav-i{display:flex;flex-direction:column;align-items:center;font-size:10px;color:#666}
+.nav-i.on{color:var(--bl)}
+.tl{flex:1;overflow-y:auto;padding:8px}
+.tc{background:var(--c);border:1px solid var(--b);border-radius:6px;margin-bottom:6px;font-size:12px;border-left:3px solid transparent}
+.th{padding:8px;display:flex;justify-content:space-between;font-size:11px}
+.tb{padding:8px;border-top:1px dotted var(--b);white-space:pre-wrap;font-family:monospace;color:#8b949e;display:none;font-size:11px}
 .tb.open{display:block}
-.st-box{height:150px;background:#000;border-top:1px solid var(--b);padding:10px;overflow:auto;font-family:monospace;color:var(--bl);font-size:11px}
-/* 2. 编辑页 (Editor) */
-.toolbar{padding:8px;border-bottom:1px solid var(--b);display:flex;gap:5px;background:var(--c)}
-.sel{background:var(--bg);border:1px solid var(--b);color:#fff;padding:6px;border-radius:4px}
-#ed{flex:1;background:transparent;color:#e6edf3;border:none;padding:15px;font-family:'Consolas',monospace;font-size:14px;resize:none;line-height:1.5}
-.act-bar{padding:10px;border-top:1px solid var(--b);display:flex;justify-content:space-between;align-items:center}
-.commit{background:var(--a);color:#fff;border:none;padding:8px 20px;border-radius:4px;font-weight:bold}
-.reg-list{max-height:120px;overflow-y:auto;border-bottom:1px solid var(--b);background:var(--c);display:none}
-.reg-i{padding:8px 12px;border-bottom:1px solid var(--b);font-size:12px;color:var(--bl)}
-/* 状态色条 */
-.t-R{border-left:3px solid var(--bl)} .t-A{border-left:3px solid var(--a)} .t-E{border-left:3px solid var(--r)}
+.st-box{height:120px;background:#000;border-top:1px solid var(--b);padding:8px;overflow:auto;font-family:monospace;color:var(--bl);font-size:11px}
+.t-R{border-left-color:var(--bl)} .t-A{border-left-color:var(--a)} .t-E{border-left-color:var(--r)}
+#ed{flex:1;background:transparent;color:#e6edf3;border:none;padding:12px;font-family:monospace;font-size:14px;resize:none}
+.toolbar{padding:5px;border-bottom:1px solid var(--b);display:flex;gap:5px;background:var(--c)}
+.sel{background:var(--bg);border:1px solid var(--b);color:#fff;font-size:12px;padding:4px}
 </style>
 </head>
 <body onload="brython();init()">
 
 <div class="top">
-    <input id="repo" class="in" placeholder="User/Repo" onchange="sv()">
+    <input id="repo" class="in" placeholder="Repo" onchange="sv()">
     <input id="token" type="password" class="in" placeholder="Token" onchange="sv()">
     <button class="btn" onclick="sync()" id="s-btn">🔄 同步</button>
 </div>
 
 <div class="main">
     <div id="v-monitor" class="view act">
-        <div class="tl" id="tl">
-            <div style="text-align:center;color:#666;margin-top:50px">点击“同步”连接宇宙</div>
-        </div>
-        <div style="padding:5px;background:var(--c);font-size:11px;color:#888">最终状态 (STATE)</div>
+        <div class="tl" id="tl"></div>
         <div class="st-box"><pre id="st">{}</pre></div>
     </div>
-
     <div id="v-edit" class="view">
-        <div class="reg-list" id="rl"></div>
         <div class="toolbar">
-            <button class="btn" onclick="togReg()">📜 法则表</button>
-            <select id="m-sel" class="sel" onchange="swM()" style="width:80px">
+            <select id="m-sel" class="sel" onchange="swM()">
                 <option value="ACTION">🚀 触发</option>
                 <option value="RULE">⚖️ 定义</option>
             </select>
-            <div style="flex:1;display:flex">
-                <select id="r-sel" class="sel" style="flex:1;display:none" onchange="ldF()"></select>
-                <input id="r-name" class="in" style="flex:1;display:none" placeholder="新法则名">
-            </div>
+            <select id="r-sel" class="sel" style="flex:1;display:none" onchange="ldF()"></select>
+            <input id="r-name" class="in" style="flex:1;display:none" placeholder="法则名">
         </div>
-        <textarea id="ed" spellcheck="false" placeholder="在此输入代码..."></textarea>
-        <div class="act-bar">
-            <span id="syn" style="font-size:12px;color:var(--a)">● Ready</span>
-            <button class="commit" id="c-btn" onclick="cmt()">⚡ 写入因果</button>
+        <textarea id="ed" spellcheck="false"></textarea>
+        <div style="padding:8px;display:flex;justify-content:space-between;background:var(--c)">
+            <span id="syn" style="color:var(--a);font-size:12px">● 就绪</span>
+            <button onclick="cmt()" id="c-btn" style="background:var(--a);color:#fff;border:none;padding:6px 15px;border-radius:4px;font-weight:bold">⚡ 写入因果</button>
         </div>
     </div>
 </div>
 
 <div class="nav">
-    <div class="nav-i on" onclick="tab('monitor')" id="n-mon"><span>👁️</span>观测</div>
-    <div class="nav-i" onclick="tab('edit')" id="n-edt"><span>✍️</span>撰写</div>
+    <div class="nav-i on" onclick="tab('monitor')" id="n-mon">观测</div>
+    <div class="nav-i" onclick="tab('edit')" id="n-edt">撰写</div>
 </div>
 
 <script type="text/python">
 from browser import window
-import ast, traceback, sys
+import ast
 
-# 修复版 MagicProxy: 支持动态属性赋值
-class MagicProxy:
+class SafeProxy:
     def __init__(self, data):
-        # 必须使用 object.__setattr__ 避免无限递归
-        object.__setattr__(self, '_data', data)
-    
+        object.__setattr__(self, '_d', data)
     def __getattr__(self, k):
-        # 读不到返回 None, 不报错
-        return self._data.get(k)
-        
+        return self._d.get(k, None) # 找不到返回 None 而不报错
     def __setattr__(self, k, v):
-        # 写入直接操作字典
-        self._data[k] = v
-        
-    def __getitem__(self, k): return self._data.get(k)
-    def __setitem__(self, k, v): self._data[k] = v
+        self._d[k] = v
+    def __getitem__(self, k): return self._d.get(k)
+    def __setitem__(self, k, v): self._d[k] = v
 
 def py_run(code, state, params):
     try:
-        s = MagicProxy(state)
-        p = MagicProxy(params)
-        # 缩进代码
-        lines = ["    " + l for l in code.split('\n')]
-        wrapper = "def logic(s, p, state, params):\n" + "\n".join(lines)
-        env = {'s':s, 'p':p, 'state':state, 'params':params}
-        exec(wrapper, env)
-        res = env['logic'](s, p, state, params)
-        return res if res is not None else state
+        s = SafeProxy(state)
+        p = SafeProxy(params)
+        env = {'s': s, 'p': p, 'state': state, 'params': params}
+        # 直接执行，不再包装函数以减少 Brython 作用域开销
+        exec(code, env)
+        return state
     except Exception as e:
-        try:
-            return Exception(str(e)) # 简易报错，防止 traceback 库崩溃
-        except:
-            return Exception("Critical Error")
+        return Exception(str(e))
 
-window.eng = {"run": py_run, "chk": lambda c: ast.parse(c) if c else True, "prs": ast.literal_eval}
+window.eng = {"run": py_run, "chk": lambda c: ast.parse(c), "prs": ast.literal_eval}
 </script>
 
 <script>
@@ -144,16 +112,11 @@ function tab(w){
     document.querySelectorAll('.nav-i').forEach(e=>e.classList.remove('on'));
     document.getElementById(w=='monitor'?'n-mon':'n-edt').classList.add('on');
 }
-function togReg(){
-    let d=document.getElementById('rl'); d.style.display=d.style.display=='block'?'none':'block';
-}
 function swM(){
     let m=document.getElementById('m-sel').value;
-    let isA=m==='ACTION';
-    document.getElementById('r-sel').style.display=isA?'block':'none';
-    document.getElementById('r-name').style.display=isA?'none':'block';
-    if(!isA) document.getElementById('ed').value="# s.x = p.y\nreturn s";
-    else renSel();
+    document.getElementById('r-sel').style.display=m==='ACTION'?'block':'none';
+    document.getElementById('r-name').style.display=m==='RULE'?'block':'none';
+    if(m==='ACTION') renSel();
 }
 function renSel(){
     let s=document.getElementById('r-sel'); s.innerHTML='';
@@ -161,105 +124,59 @@ function renSel(){
     ldF();
 }
 function ldF(){
-    let k=document.getElementById('r-sel').value;
-    if(!k || !reg[k]) return;
-    // 自动生成参数模版
-    let c=reg[k], ps=new Set(), m;
-    let r=/p\.([a-zA-Z0-9_]+)/g;
+    let k=document.getElementById('r-sel').value; if(!k||!reg[k])return;
+    let c=reg[k], ps=new Set(), m, r=/p\.([a-zA-Z0-9_]+)/g;
     while((m=r.exec(c))) ps.add(m[1]);
-    let obj={}; ps.forEach(p=>obj[p]="");
-    document.getElementById('ed').value = JSON.stringify(obj, null, 2).replace(/"/g, "'");
+    let o={}; ps.forEach(x=>o[x]="");
+    document.getElementById('ed').value=JSON.stringify(o,null,2).replace(/"/g,"'");
 }
 async function sync(){
     let rp=document.getElementById('repo').value, tk=document.getElementById('token').value;
-    let btn=document.getElementById('s-btn');
-    if(!rp||!tk)return alert('请配置');
+    let btn=document.getElementById('s-btn'); if(!rp||!tk)return;
     btn.innerText="⏳";
     try{
-        // Fetch logic simplified for space
         let cms=[], pg=1, h={'Authorization':`token ${tk}`};
         while(true){
             let r=await fetch(`https://api.github.com/repos/${rp}/commits?per_page=100&page=${pg}`,{headers:h});
-            let d=await r.json(); 
-            if(!d.length)break; 
-            cms=cms.concat(d); 
-            if(d.length<100)break; 
-            pg++;
+            let d=await r.json(); if(!d.length)break; cms=cms.concat(d); if(d.length<100)break; pg++;
         }
         cms.reverse();
-        
-        // Replay
         let st={}, tl=document.getElementById('tl'); tl.innerHTML=''; reg={};
-        let rl=document.getElementById('rl'); rl.innerHTML='';
-        
         for(let c of cms){
-            let m=c.commit.message;
-            if(!m.includes('|'))continue;
+            let m=c.commit.message; if(!m.includes('|'))continue;
             let [hd, ...bd]=m.split('\n'), b=bd.join('\n').trim();
             let [ty, nm]=hd.split('|').map(s=>s.trim());
-            let tm=new Date(c.commit.author.date).toLocaleTimeString().slice(0,5);
-            
-            let card=document.createElement('div'), resTxt="";
+            let card=document.createElement('div'), res="";
             card.className=`tc t-${ty.charAt(0)}`;
-            
-            if(ty==='RULE'){
-                reg[nm]=b; resTxt=`定义: \n${b}`;
-            }else{
-                let p;
-                try{ p=window.eng.prs(b) }catch(e){ p="ERR" }
-                if(p==="ERR"){
-                    resTxt=`参数错误: ${b}`; card.className+=" t-E";
-                }else{
-                    let ret=window.eng.run(reg[nm]||"", st, p);
-                    if(ret instanceof Error){
-                        resTxt=`❌ 塌缩: ${ret.message}\nArgs: ${b}`; card.className+=" t-E";
-                    }else{
-                        st=ret; resTxt=`✅ OK\nArgs: ${b}`;
-                    }
-                }
+            if(ty==='RULE'){ reg[nm]=b; res=`⚖️ 定义法则\n${b}`; }
+            else{
+                let p; try{p=window.eng.prs(b)}catch(e){p=null}
+                let ret=window.eng.run(reg[nm]||"", st, p||{});
+                if(ret instanceof Error){ card.className+=" t-E"; res=`❌ 塌缩: ${ret.message}\n参数: ${b}`; }
+                else{ st=ret; res=`🚀 触发成功\n参数: ${b}`; }
             }
-            card.innerHTML=`<div class="th" onclick="this.nextElementSibling.classList.toggle('open')"><span>${ty=='RULE'?'⚖️':'🚀'} ${nm}</span><span>${tm}</span></div><div class="tb">${resTxt}</div>`;
+            card.innerHTML=`<div class="th" onclick="this.nextElementSibling.classList.toggle('open')"><span>${nm}</span><span>${new Date(c.commit.author.date).toLocaleTimeString().slice(0,5)}</span></div><div class="tb">${res}</div>`;
             tl.insertBefore(card, tl.firstChild);
         }
-        
         document.getElementById('st').innerText=JSON.stringify(st,null,2);
-        Object.keys(reg).forEach(k=>{
-            let d=document.createElement('div');d.className='reg-i';d.innerText=k;
-            d.onclick=()=>{
-                tab('edit');document.getElementById('m-sel').value='RULE';swM();
-                document.getElementById('r-name').value=k;
-                document.getElementById('ed').value=reg[k];
-            };
-            rl.appendChild(d);
-        });
-        
-        if(document.getElementById('m-sel').value==='ACTION') renSel();
-        btn.innerText="🔄 同步";
-        
+        renSel(); btn.innerText="🔄 同步";
     }catch(e){alert(e);btn.innerText="重试"}
 }
-
 async function cmt(){
-    let rp=document.getElementById('repo').value, tk=document.getElementById('token').value;
+    let rp=document.getElementById('repo').value, tk=document.getElementById('token').value, btn=document.getElementById('c-btn');
     let m=document.getElementById('m-sel').value, b=document.getElementById('ed').value;
     let n=m==='ACTION'?document.getElementById('r-sel').value:document.getElementById('r-name').value;
-    let btn=document.getElementById('c-btn');
-    
-    if(!n)return alert('无名称');
-    try{ if(m==='RULE')window.eng.chk(b); else window.eng.prs(b); }catch(e){return alert('语法错误');}
-    
+    if(!n)return alert('缺名称');
     btn.innerText="写入..."; btn.disabled=true;
     try{
         let sha, r=await fetch(`https://api.github.com/repos/${rp}/contents/${LOG}`,{headers:{'Authorization':`token ${tk}`}});
         if(r.ok)sha=(await r.json()).sha;
-        
-        let res=await fetch(`https://api.github.com/repos/${rp}/contents/${LOG}`,{
+        await fetch(`https://api.github.com/repos/${rp}/contents/${LOG}`,{
             method:'PUT',
             headers:{'Authorization':`token ${tk}`,'Content-Type':'application/json'},
             body:JSON.stringify({message:`${m} | ${n}\n\n${b}`,content:btoa(`T:${Date.now()}`),sha:sha})
         });
-        if(!res.ok)throw new Error(res.status);
-        btn.innerText="✅"; setTimeout(()=>{btn.innerText="⚡ 写入因果";btn.disabled=false;sync()},1000);
+        btn.innerText="✅"; setTimeout(()=>{btn.innerText="⚡ 写入因果";btn.disabled=false;sync()},800);
     }catch(e){alert(e);btn.disabled=false}
 }
 </script>
