@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Provelance v7.6 - Deep Causal</title>
+<title>Provelance v7.7 - Pure State</title>
 <script src="https://cdn.jsdelivr.net/npm/brython@3/brython.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/brython@3/brython_stdlib.js"></script>
 <style>
@@ -11,14 +11,12 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;font-family:-apple-system,system-ui,monospace}
 html,body{height:100%;margin:0;padding:0;overflow:hidden;background:var(--bg);color:var(--t)}
 body{display:flex;flex-direction:column;height:100dvh}
-/* UI */
 .top{background:#010409;border-bottom:1px solid var(--b);padding:8px 12px;display:flex;gap:6px;align-items:center;flex-shrink:0}
 .in{background:#0d1117;border:1px solid var(--b);color:#fff;padding:6px 10px;border-radius:6px;font-size:13px;flex:1;min-width:0}
 .btn-s{background:var(--bl);color:#000;border:none;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:bold}
 .nav{height:65px;background:var(--c);border-top:2px solid var(--b);display:flex;flex-shrink:0;padding-bottom:env(safe-area-inset-bottom)}
 .nav-i{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;color:#888;gap:4px}
 .nav-i.on{color:var(--bl);background:#58a6ff11}
-/* Timeline */
 .main{flex:1;position:relative;overflow:hidden}
 .view{position:absolute;inset:0;display:none;flex-direction:column;background:var(--bg)}
 .view.act{display:flex}
@@ -28,8 +26,7 @@ body{display:flex;flex-direction:column;height:100dvh}
 .tb{padding:12px;border-top:1px solid var(--b);background:#00000033;font-size:12px;display:none;flex-direction:column;gap:10px}
 .tb-sec{background:#ffffff0a;padding:8px;border-radius:4px;position:relative;border-left:2px solid var(--b)}
 .tb-pre{margin:5px 0 0 0;white-space:pre-wrap;word-break:break-all;color:#8b949e;max-height:150px;overflow-y:auto}
-.cp-btn{position:absolute;top:5px;right:5px;background:var(--b);color:#ccc;border:none;padding:4px 8px;border-radius:4px;font-size:10px;z-index:2}
-/* Diff */
+.cp-btn{position:absolute;top:5px;right:5px;background:var(--b);color:#ccc;border:none;padding:4px 8px;border-radius:4px;font-size:10px}
 .diff-row{display:flex;justify-content:space-between;padding:2px 0;font-family:monospace;border-bottom:1px solid #ffffff05}
 .diff-k{color:#8b949e}
 .diff-v{display:flex;gap:8px;align-items:center;max-width:70%;overflow:hidden}
@@ -37,11 +34,9 @@ body{display:flex;flex-direction:column;height:100dvh}
 .v-new.up{color:var(--a);font-weight:bold}
 .v-new.down{color:var(--r);font-weight:bold}
 .v-new.add{color:var(--bl)}
-/* Form */
 .form-card{background:#1c2128;border:1px solid var(--purp);margin:12px;border-radius:8px;padding:12px;display:none;flex-direction:column;gap:10px}
 .form-row{display:flex;align-items:center;gap:10px}
 .form-label{font-size:11px;color:var(--purp);width:70px;font-weight:bold}
-/* Editor */
 .st-box{height:25%;max-height:180px;background:#000;border-top:1px solid var(--b);padding:10px;overflow:auto;font-size:12px;color:var(--bl);flex-shrink:0}
 .toolbar{background:var(--c);padding:12px;border-bottom:1px solid var(--b);flex-shrink:0}
 .reg-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:10px;scrollbar-width:none}
@@ -53,7 +48,7 @@ body{display:flex;flex-direction:column;height:100dvh}
 </head>
 <body onload="brython();init()">
 <div class="top">
-    <input id="repo" class="in" placeholder="Repo (User/Repo)" onchange="sv()">
+    <input id="repo" class="in" placeholder="Repo" onchange="sv()">
     <input id="token" type="password" class="in" placeholder="Token" onchange="sv()">
     <button class="btn-s" onclick="sync()" id="s-btn">同步</button>
 </div>
@@ -64,12 +59,12 @@ body{display:flex;flex-direction:column;height:100dvh}
             <div class="reg-scroll" id="rl-scroll"></div>
             <div style="display:flex;gap:8px">
                 <select id="m-sel" class="in" style="flex:0.4;font-weight:bold" onchange="swM()"><option value="ACTION">🚀 触发</option><option value="RULE">⚖️ 定义</option></select>
-                <select id="r-sel" class="in" onchange="ldF()"></select><input id="r-name" class="in" style="display:none" placeholder="法则名称">
+                <select id="r-sel" class="in" onchange="ldF()"></select><input id="r-name" class="in" style="display:none" placeholder="名称">
             </div>
         </div>
         <div id="smart-form" class="form-card"></div>
-        <textarea id="ed" spellcheck="false" placeholder="Python 代码/参数..." oninput="syncFormToCode()"></textarea>
-        <div class="act-bar"><span id="syn" style="color:var(--a);font-size:12px;font-weight:bold">● 就绪</span><button onclick="cmt()" id="c-btn" style="background:var(--a);color:#fff;border:none;padding:12px 35px;border-radius:8px;font-weight:bold;font-size:15px">⚡ 写入因果</button></div>
+        <textarea id="ed" spellcheck="false" oninput="syncFormToCode()"></textarea>
+        <div class="act-bar"><span id="syn" style="color:var(--a);font-size:12px;font-weight:bold">● 就绪</span><button onclick="cmt()" id="c-btn" style="background:var(--a);color:#fff;border:none;padding:12px 35px;border-radius:8px;font-weight:bold;font-size:15px">⚡ 写入</button></div>
     </div>
 </div>
 <div class="nav"><div class="nav-i on" onclick="tab('monitor')" id="n-mon"><b>👁️</b>观测</div><div class="nav-i" onclick="tab('edit')" id="n-edt"><b>✍️</b>撰写</div></div>
@@ -77,18 +72,15 @@ body{display:flex;flex-direction:column;height:100dvh}
 <script type="text/python">
 from browser import window
 import ast
+import json
 
 class SafeProxy:
     def __init__(self, d):
         self._d = d.to_dict() if hasattr(d,'to_dict') else (d if isinstance(d,dict) else dict(d))
     def get(self, k, default=0): return self._d.get(k, default)
-    def __getattr__(self, k): 
+    def __getattr__(self, k):
         if k == 'get': return self.get
-        v = self._d.get(k, 0)
-        if isinstance(v, str):
-            try: return float(v.replace(' ', '.'))
-            except: return v
-        return v
+        return self._d.get(k, 0)
     def __setattr__(self, k, v):
         if k=='_d': object.__setattr__(self, k, v)
         else: self._d[k] = v
@@ -98,52 +90,44 @@ def py_run(code, state_in, params_in):
         s, p = SafeProxy(state_in), SafeProxy(params_in)
         env = {'s':s,'p':p,'int':int,'float':float,'round':round,'abs':abs,'max':max,'min':min}
         exec(code, env)
-        return s._d
+        # 核心修复：将结果强制序列化为 JSON 字符串再解析回去，彻底切断 Brython 的循环对象引用
+        return json.loads(json.dumps(s._d))
     except Exception as e: return str(e)
 
 def get_schema(code):
     try:
         tree = ast.parse(code)
-        params = {}
-        alias_map = {}
-        
-        # 1. 追踪别名 (e.g. res = p.res)
+        params, aliases = {}, {}
         for node in ast.walk(tree):
+            # 追踪别名 (e.g. res = p.res)
             if isinstance(node, ast.Assign):
-                src = None
-                if isinstance(node.value, ast.Attribute) and getattr(node.value.value, 'id', '') == 'p':
-                    src = node.value.attr
-                elif isinstance(node.value, ast.Call) and len(node.value.args) > 0:
-                    arg = node.value.args[0]
-                    if isinstance(arg, ast.Attribute) and getattr(arg.value, 'id', '') == 'p':
-                        src = arg.attr
-                if src:
+                v = node.value
+                if isinstance(v, ast.Attribute) and getattr(v.value, 'id', '') == 'p':
                     for t in node.targets:
-                        if isinstance(t, ast.Name): 
-                            alias_map[t.id] = src
-                            if src not in params: params[src] = set()
-
-        # 2. 识别属性与比较值
-        for node in ast.walk(tree):
+                        if isinstance(t, ast.Name): aliases[t.id] = v.attr
+                elif isinstance(v, ast.Call) and len(v.args) > 0:
+                    a = v.args[0]
+                    if isinstance(a, ast.Attribute) and getattr(a.value, 'id', '') == 'p':
+                        for t in node.targets:
+                            if isinstance(t, ast.Name): aliases[t.id] = a.attr
+            # 识别属性
             if isinstance(node, ast.Attribute) and getattr(node.value, 'id', '') == 'p':
                 if node.attr not in params: params[node.attr] = set()
-            
+            # 识别比较值
             if isinstance(node, ast.Compare):
                 p_name = None
                 if isinstance(node.left, ast.Attribute) and getattr(node.left.value, 'id', '') == 'p':
                     p_name = node.left.attr
-                elif isinstance(node.left, ast.Name) and node.left.id in alias_map:
-                    p_name = alias_map[node.left.id]
-                
+                elif isinstance(node.left, ast.Name) and node.left.id in aliases:
+                    p_name = aliases[node.left.id]
                 if p_name:
                     if p_name not in params: params[p_name] = set()
-                    for op, comp in zip(node.ops, node.comparators):
+                    for op, cp in zip(node.ops, node.comparators):
                         if isinstance(op, (ast.Eq, ast.In)):
-                            if isinstance(comp, ast.Constant): params[p_name].add(str(comp.value))
-                            elif isinstance(comp, (ast.List, ast.Tuple)):
-                                for e in comp.elts:
+                            if isinstance(cp, ast.Constant): params[p_name].add(str(cp.value))
+                            elif isinstance(cp, (ast.List, ast.Tuple)):
+                                for e in cp.elts:
                                     if isinstance(e, ast.Constant): params[p_name].add(str(e.value))
-        
         return {k: sorted(list(v)) for k, v in params.items()}
     except: return {}
 
@@ -206,26 +190,28 @@ function cp(btn, txt) {
 }
 
 function getDiffHtml(oldS, newS) {
-    let html = '<div style="padding:4px 0">';
-    const keys = new Set([...Object.keys(oldS), ...Object.keys(newS)]);
-    let changed = false;
-    keys.forEach(k => {
-        let ov = oldS[k], nv = newS[k];
-        let dOld = Array.isArray(ov) ? `[${ov.length}]` : ov;
-        let dNew = Array.isArray(nv) ? `[${nv.length}]` : nv;
-        if (JSON.stringify(ov) === JSON.stringify(nv)) return;
-        changed = true;
-        let cls = 'add', sym = '';
-        if (typeof ov === 'number' && typeof nv === 'number') {
-            cls = nv > ov ? 'up' : 'down';
-            sym = nv > ov ? '▲' : '▼';
-        }
-        html += `<div class="diff-row"><span class="diff-k">${k}</span><span class="diff-v">
-            <span class="v-old">${ov !== undefined ? dOld : ''}</span>
-            <span class="v-new ${cls}">${sym} ${dNew}</span>
-        </span></div>`;
-    });
-    return changed ? html + '</div>' : '<div style="color:#555;font-size:11px">无变动</div>';
+    try {
+        let html = '<div style="padding:4px 0">';
+        const keys = new Set([...Object.keys(oldS), ...Object.keys(newS)]);
+        let changed = false;
+        keys.forEach(k => {
+            let ov = oldS[k], nv = newS[k];
+            if (JSON.stringify(ov) === JSON.stringify(nv)) return;
+            changed = true;
+            let dOld = Array.isArray(ov) ? `[${ov.length}]` : ov;
+            let dNew = Array.isArray(nv) ? `[${nv.length}]` : nv;
+            let cls = 'add', sym = '';
+            if (typeof ov === 'number' && typeof nv === 'number') {
+                cls = nv > ov ? 'up' : 'down';
+                sym = nv > ov ? '▲' : '▼';
+            }
+            html += `<div class="diff-row"><span class="diff-k">${k}</span><span class="diff-v">
+                <span class="v-old">${ov !== undefined ? dOld : ''}</span>
+                <span class="v-new ${cls}">${sym} ${dNew}</span>
+            </span></div>`;
+        });
+        return changed ? html + '</div>' : '<div style="color:#555;font-size:11px">无变动</div>';
+    } catch(e) { return '<div style="color:var(--r)">Diff Error</div>'; }
 }
 
 async function sync(){
@@ -239,20 +225,18 @@ async function sync(){
         let sc=document.getElementById('rl-scroll'); sc.innerHTML='';
         for(let c of cms){
             let m=c.commit.message; if(!m.includes('|'))continue;
-            let [hd, ...bd]=m.split('\n'), b=bd.join('\n').trim();
-            let [ty, nm]=hd.split('|').map(s=>s.trim());
+            let [hd, ...bd]=m.split('\n'), b=bd.join('\n').trim(), [ty, nm]=hd.split('|').map(s=>s.trim());
             let card=document.createElement('div'), resHtml="", codeStr="";
             card.className=`tc t-${ty.charAt(0)}`;
-            if(ty==='RULE'){ reg[nm]=b; resHtml=`<div class="tb-sec"><button class="cp-btn" onclick="cp(this,this.nextElementSibling.innerText)">📋 复制</button><pre class="tb-pre">${b}</pre></div>`;
+            if(ty==='RULE'){ reg[nm]=b; resHtml=`<div class="tb-sec"><button class="cp-btn" onclick="cp(this,this.nextElementSibling.innerText)">📋</button><pre class="tb-pre">${b}</pre></div>`;
             } else {
                 codeStr = reg[nm] || '# Missing Rule';
                 let p; try{p=window.eng.prs(b)}catch(e){p={}}
-                let oldSt = JSON.parse(JSON.stringify(st));
-                let ret = window.eng.run(codeStr, st, p);
-                if(typeof ret === 'string'){ card.className+=" t-E"; resHtml=`<div class="tb-sec"><pre class="tb-pre" style="color:var(--r)">❌ Error: ${ret}</pre></div>`;
+                let oldSt = JSON.parse(JSON.stringify(st)), ret = window.eng.run(codeStr, st, p);
+                if(typeof ret === 'string'){ card.className+=" t-E"; resHtml=`<div class="tb-sec"><pre class="tb-pre" style="color:var(--r)">❌ ${ret}</pre></div>`;
                 } else {
                     st = ret;
-                    resHtml = `<div class="tb-sec" style="border-left-color:var(--purp);margin-bottom:8px"><span style="font-size:10px;color:var(--purp);display:block">INPUT:</span><button class="cp-btn" onclick="cp(this,'${b.replace(/'/g,"\\'")}')">📋</button><pre class="tb-pre">${b}</pre></div>
+                    resHtml = `<div class="tb-sec" style="border-left-color:var(--purp);margin-bottom:8px"><span style="font-size:10px;color:var(--purp)">INPUT:</span><pre class="tb-pre">${b}</pre></div>
                                <div class="tb-sec" style="color:var(--y)">💬 ${st.last_action || 'OK'}</div>
                                <div class="tb-sec"><b>状态变化:</b>${getDiffHtml(oldSt, st)}</div>`;
                 }
@@ -272,7 +256,7 @@ async function cmt(){
     try{
         let sha, r=await fetch(`https://api.github.com/repos/${rp}/contents/${LOG}`,{headers:{'Authorization':`token ${tk}`}}); if(r.ok)sha=(await r.json()).sha;
         await fetch(`https://api.github.com/repos/${rp}/contents/${LOG}`,{method:'PUT',headers:{'Authorization':`token ${tk}`,'Content-Type':'application/json'},body:JSON.stringify({message:`${m} | ${n}\n\n${b}`,content:btoa(`T:${Date.now()}`),sha:sha})});
-        btn.innerText="✅ OK"; setTimeout(()=>{btn.innerText="⚡ 写入因果";btn.disabled=false;sync();tab('monitor')},1000);
+        btn.innerText="✅ OK"; setTimeout(()=>{btn.innerText="⚡ 写入";btn.disabled=false;sync();tab('monitor')},1000);
     }catch(e){alert('Commit Error: '+e);btn.disabled=false}
 }
 </script>
