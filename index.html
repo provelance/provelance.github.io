@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Provelance v5.8</title>
+<title>Provelance v5.9</title>
 <script src="https://cdn.jsdelivr.net/npm/brython@3/brython.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/brython@3/brython_stdlib.js"></script>
 <style>
@@ -76,21 +76,41 @@ body { display: flex; flex-direction: column; height: 100dvh; }
 <script type="text/python">
 from browser import window
 import ast
+
 class SafeProxy:
-    def __init__(self, d): object.__setattr__(self, '_d', d)
-    def __getattr__(self, k): 
-        v = self._d.get(k, 0)
-        try: return float(v) if isinstance(v, (str, int, float)) else v
-        except: return v
-    def __setattr__(self, k, v): self._d[k] = v
-def py_run(code, state, params):
+    def __init__(self, data_dict):
+        # 强制将输入转换为 Python 字典，解决 'Javascript Object' 报错
+        if hasattr(data_dict, 'to_dict'): self._d = data_dict.to_dict()
+        elif isinstance(data_dict, dict): self._d = data_dict
+        else: self._d = dict(data_dict)
+        
+    def __getattr__(self, k):
+        val = self._d.get(k, 0)
+        # 自动尝试将数字字符串转为浮点数
+        if isinstance(val, str):
+            try: return float(val.replace(' ', '.'))
+            except: return val
+        return val
+    
+    def __setattr__(self, k, v):
+        if k == '_d': object.__setattr__(self, k, v)
+        else: self._d[k] = v
+
+def py_run(code, state_in, params_in):
     try:
-        s, p = SafeProxy(state), SafeProxy(params)
-        env = {'s':s, 'p':p, 'state':state, 'params':params, 'float':float, 'round':round, 'max':max, 'min':min}
+        # 核心修复：预处理输入对象
+        s = SafeProxy(state_in)
+        p = SafeProxy(params_in)
+        env = {
+            's': s, 'p': p, 
+            'float': float, 'round': round, 'max': max, 'min': min
+        }
         exec(code, env)
-        return state
-    except Exception as e: return str(e)
-window.eng = {"run":py_run, "chk":lambda c:ast.parse(c), "prs":ast.literal_eval}
+        return s._d # 返回纯 Python 字典给 JS
+    except Exception as e:
+        return str(e)
+
+window.eng = {"run": py_run, "prs": lambda b: ast.literal_eval(b)}
 </script>
 
 <script>
@@ -146,7 +166,7 @@ async function sync(){
             let [hd, ...bd]=m.split('\n'), b=bd.join('\n').trim();
             let [ty, nm]=hd.split('|').map(s=>s.trim());
             let card=document.createElement('div'), res=""; card.className=`tc t-${ty.charAt(0)}`;
-            if(ty==='RULE'){ reg[nm]=b; res=`⚖️ 法则已挂载`; }
+            if(ty==='RULE'){ reg[nm]=b; res=`⚖️ 法则挂载成功`; }
             else{
                 let p; try{p=window.eng.prs(b)}catch(e){p={}}
                 let ret=window.eng.run(reg[nm]||"", st, p);
@@ -159,7 +179,7 @@ async function sync(){
         document.getElementById('st').innerText=JSON.stringify(st,null,2);
         Object.keys(reg).forEach(k=>{
             let t=document.createElement('span'); t.className='reg-tag'; t.innerText=k;
-            t.onclick=()=>{ document.getElementById('m-sel').value='RULE'; swM(); document.getElementById('r-name').value=k; document.getElementById('ed').value=reg[k]; };
+            t.onclick=()=>{ document.getElementById('m-sel').value='RULE'; swM(); document.getElementById('r-name').value=k; document.getElementById('ed').value=reg[k]; tab('edit');};
             sc.appendChild(t);
         });
         renSel(); btn.innerText="同步"; btn.disabled=false;
