@@ -387,4 +387,23 @@
                 } catch(e) {}
 
                 const res = await fetch(`https://api.github.com/repos/${repo}/contents/${LOG_FILE}`, {
-                    method: 'PUT'
+                    method: 'PUT',
+                    headers: {'Authorization': `token ${token}`, 'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        message: `${mode} | ${name}\n\n${body}`,
+                        content: btoa(`T:${Date.now()}`),
+                        sha: sha
+                    })
+                });
+
+                if(!res.ok) throw new Error("GitHub 拒绝写入 (权限或冲突)");
+                btn.innerText = "✅";
+                setTimeout(() => { btn.disabled = false; btn.innerText = "⚡ 写入因果"; sync(); }, 1000);
+            } catch(e) {
+                alert(e.message);
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
