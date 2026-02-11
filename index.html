@@ -234,10 +234,35 @@ async function sync(){
         let cms=[], pg=1, h={'Authorization':`token ${tk}`};
         while(true){let r=await fetch(`https://api.github.com/repos/${rp}/commits?per_page=100&page=${pg}`,{headers:h});let d=await r.json();if(!d||!d.length)break;cms=cms.concat(d);if(d.length<100)break;pg++}
         cms.reverse();
-        let st={}, tl=document.getElementById('tl'); tl.innerHTML=''; reg={};
+        
+        let tl=document.getElementById('tl'); tl.innerHTML=''; reg={};
         let sc=document.getElementById('rl-scroll'); sc.innerHTML='';
-        for(let c of cms){
-            let m=c.commit.message; if(!m.includes('|'))continue;
+        let st={};
+
+        // --- 核心修改：空时间线检查 ---
+        let validCms = cms.filter(c => c.commit.message.includes('|'));
+        
+        if(validCms.length === 0) {
+            tl.innerHTML = `
+                <div style="padding:20px; color:#8b949e; line-height:1.6; border:1px dashed var(--b); border-radius:12px; margin:10px">
+                    <h3 style="color:var(--bl); margin-top:0">🌌 宇宙虚空</h3>
+                    <p>当前时间线为空。请按以下步骤初始化：</p>
+                    <ol style="padding-left:18px; font-size:13px">
+                        <li>前往 <b>✍️ 撰写</b> 页面</li>
+                        <li>模式切换为 <b>⚖️ 定义</b></li>
+                        <li>命名为 <code style="color:var(--purp)">init_universe</code></li>
+                        <li>编写代码：<code style="color:var(--a)">s.balance = 100</code></li>
+                        <li>点击 <b>⚡ 写入</b> 创造第一条物理定律</li>
+                    </ol>
+                </div>`;
+            document.getElementById('st').innerText="{}";
+            btn.innerText="同步"; btn.disabled=false;
+            return;
+        }
+        // --- 结束修改 ---
+
+        for(let c of validCms){
+            let m=c.commit.message;
             let [hd, ...bd]=m.split('\n'), b=bd.join('\n').trim(), [ty, nm]=hd.split('|').map(s=>s.trim());
             let card=document.createElement('div'), resHtml="", codeStr="";
             card.className=`tc t-${ty.charAt(0)}`;
@@ -254,7 +279,6 @@ async function sync(){
             card.innerHTML=`<div class="th" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='flex'?'none':'flex'"><span>${ty==='RULE'?'⚖️':'🚀'} <b>${nm}</b></span><span style="color:#666;font-size:11px">${new Date(c.commit.author.date).toLocaleTimeString().slice(0,5)}</span></div><div class="tb">${resHtml}</div>`;
             tl.insertBefore(card, tl.firstChild);
         }
-        // 全局触发一次观测界面的高亮
         Prism.highlightAllUnder(tl);
         document.getElementById('st').innerText=JSON.stringify(st,null,2);
         Object.keys(reg).forEach(k=>{let t=document.createElement('span');t.className='reg-tag';t.innerText=k;t.onclick=()=>{document.getElementById('m-sel').value='RULE';swM();document.getElementById('r-name').value=k;document.getElementById('ed').value=reg[k];onEdInp();tab('edit')};sc.appendChild(t)});
