@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Provelance v7.7 - Pure State</title>
+<title>Provelance v7.8 - Clean State</title>
 <script src="https://cdn.jsdelivr.net/npm/brython@3/brython.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/brython@3/brython_stdlib.js"></script>
 <style>
@@ -72,34 +72,51 @@ body{display:flex;flex-direction:column;height:100dvh}
 <script type="text/python">
 from browser import window
 import ast
-import json
 
-class SafeProxy:
+def clean_data(obj):
+    """递归深度清洗数据，彻底切断 Brython 与 JS 的循环引用和元数据残留"""
+    if isinstance(obj, dict):
+        return {str(k): clean_data(v) for k, v in obj.items()}
+    elif isinstance(obj, list) or hasattr(obj, 'append'):
+        return [clean_data(x) for x in list(obj)]
+    elif isinstance(obj, (int, float, str, bool)) or obj is None:
+        return obj
+    elif hasattr(obj, 'to_dict'):
+        return clean_data(obj.to_dict())
+    else:
+        return str(obj)
+
+class StateProxy:
     def __init__(self, d):
-        self._d = d.to_dict() if hasattr(d,'to_dict') else (d if isinstance(d,dict) else dict(d))
-    def get(self, k, default=0): return self._d.get(k, default)
+        self._d = d if isinstance(d, dict) else (d.to_dict() if hasattr(d, 'to_dict') else dict(d))
     def __getattr__(self, k):
-        if k == 'get': return self.get
+        if k == 'get': return self._d.get
         return self._d.get(k, 0)
     def __setattr__(self, k, v):
-        if k=='_d': object.__setattr__(self, k, v)
+        if k == '_d': object.__setattr__(self, k, v)
         else: self._d[k] = v
 
 def py_run(code, state_in, params_in):
     try:
-        s, p = SafeProxy(state_in), SafeProxy(params_in)
-        env = {'s':s,'p':p,'int':int,'float':float,'round':round,'abs':abs,'max':max,'min':min}
+        # 预清洗输入，确保是在纯 Python 字典上操作
+        raw_s = clean_data(state_in)
+        raw_p = clean_data(params_in)
+        s, p = StateProxy(raw_s), StateProxy(raw_p)
+        
+        env = {'s': s, 'p': p, 'int': int, 'float': float, 'round': round, 
+               'abs': abs, 'max': max, 'min': min, 'list': list, 'dict': dict}
         exec(code, env)
-        # 核心修复：将结果强制序列化为 JSON 字符串再解析回去，彻底切断 Brython 的循环对象引用
-        return json.loads(json.dumps(s._d))
-    except Exception as e: return str(e)
+        
+        # 结果深度脱壳
+        return clean_data(s._d)
+    except Exception as e:
+        return str(e)
 
 def get_schema(code):
     try:
         tree = ast.parse(code)
         params, aliases = {}, {}
         for node in ast.walk(tree):
-            # 追踪别名 (e.g. res = p.res)
             if isinstance(node, ast.Assign):
                 v = node.value
                 if isinstance(v, ast.Attribute) and getattr(v.value, 'id', '') == 'p':
@@ -110,10 +127,8 @@ def get_schema(code):
                     if isinstance(a, ast.Attribute) and getattr(a.value, 'id', '') == 'p':
                         for t in node.targets:
                             if isinstance(t, ast.Name): aliases[t.id] = a.attr
-            # 识别属性
             if isinstance(node, ast.Attribute) and getattr(node.value, 'id', '') == 'p':
                 if node.attr not in params: params[node.attr] = set()
-            # 识别比较值
             if isinstance(node, ast.Compare):
                 p_name = None
                 if isinstance(node.left, ast.Attribute) and getattr(node.left.value, 'id', '') == 'p':
@@ -192,14 +207,14 @@ function cp(btn, txt) {
 function getDiffHtml(oldS, newS) {
     try {
         let html = '<div style="padding:4px 0">';
-        const keys = new Set([...Object.keys(oldS), ...Object.keys(newS)]);
+        const keys = new Set([...Object.keys(oldS||{}), ...Object.keys(newS||{})]);
         let changed = false;
         keys.forEach(k => {
-            let ov = oldS[k], nv = newS[k];
+            let ov = oldS?oldS[k]:undefined, nv = newS?newS[k]:undefined;
             if (JSON.stringify(ov) === JSON.stringify(nv)) return;
             changed = true;
-            let dOld = Array.isArray(ov) ? `[${ov.length}]` : ov;
-            let dNew = Array.isArray(nv) ? `[${nv.length}]` : nv;
+            let dOld = Array.isArray(ov) ? `[${ov.length}]` : (typeof ov === 'object' ? '{...}' : ov);
+            let dNew = Array.isArray(nv) ? `[${nv.length}]` : (typeof nv === 'object' ? '{...}' : nv);
             let cls = 'add', sym = '';
             if (typeof ov === 'number' && typeof nv === 'number') {
                 cls = nv > ov ? 'up' : 'down';
@@ -230,9 +245,10 @@ async function sync(){
             card.className=`tc t-${ty.charAt(0)}`;
             if(ty==='RULE'){ reg[nm]=b; resHtml=`<div class="tb-sec"><button class="cp-btn" onclick="cp(this,this.nextElementSibling.innerText)">📋</button><pre class="tb-pre">${b}</pre></div>`;
             } else {
-                codeStr = reg[nm] || '# Missing Rule';
+                codeStr = reg[nm] || '# Rule Missing';
                 let p; try{p=window.eng.prs(b)}catch(e){p={}}
-                let oldSt = JSON.parse(JSON.stringify(st)), ret = window.eng.run(codeStr, st, p);
+                let oldSt = JSON.parse(JSON.stringify(st));
+                let ret = window.eng.run(codeStr, st, p);
                 if(typeof ret === 'string'){ card.className+=" t-E"; resHtml=`<div class="tb-sec"><pre class="tb-pre" style="color:var(--r)">❌ ${ret}</pre></div>`;
                 } else {
                     st = ret;
