@@ -239,28 +239,35 @@ async function sync(){
         let sc=document.getElementById('rl-scroll'); sc.innerHTML='';
         let st={};
 
-        // --- 核心修改：空时间线检查 ---
         let validCms = cms.filter(c => c.commit.message.includes('|'));
         
         if(validCms.length === 0) {
             tl.innerHTML = `
-                <div style="padding:20px; color:#8b949e; line-height:1.6; border:1px dashed var(--b); border-radius:12px; margin:10px">
-                    <h3 style="color:var(--bl); margin-top:0">🌌 宇宙虚空</h3>
-                    <p>当前时间线为空。请按以下步骤初始化：</p>
-                    <ol style="padding-left:18px; font-size:13px">
-                        <li>前往 <b>✍️ 撰写</b> 页面</li>
-                        <li>模式切换为 <b>⚖️ 定义</b></li>
-                        <li>命名为 <code style="color:var(--purp)">init_universe</code></li>
-                        <li>编写代码：<code style="color:var(--a)">s.balance = 100</code></li>
-                        <li>点击 <b>⚡ 写入</b> 创造第一条物理定律</li>
-                    </ol>
+                <div style="padding:20px; color:#8b949e; line-height:1.6; border:1px dashed var(--b); border-radius:12px; margin:10px; background:#161b22">
+                    <h3 style="color:var(--bl); margin-top:0">🌌 宇宙大爆炸指引</h3>
+                    <p style="font-size:13px">检测到虚空仓库。请通过以下步骤建立<b>交互律</b>：</p>
+                    <div style="background:#000; padding:12px; border-radius:8px; font-size:11px; border:1px solid var(--b)">
+                        <b style="color:var(--purp)">1. 定义规则 (RULE):</b><br>
+                        名称: <span style="color:var(--y)">power_system</span><br>
+                        代码:<br>
+                        <code style="color:var(--a)">
+                        s.energy = getattr(s, 'energy', 0) + p.gain<br>
+                        s.last_action = f"注入能量: {p.gain}"
+                        </code>
+                    </div>
+                    <p style="font-size:13px; margin-top:15px">说明：</p>
+                    <ul style="padding-left:18px; font-size:12px; color:#c9d1d9">
+                        <li><b style="color:var(--bl)">s.energy</b>: 状态对象，数据会永久保存。</li>
+                        <li><b style="color:var(--bl)">p.gain</b>: 参数对象，写入时通过表单输入。</li>
+                    </ul>
+                    <div style="margin-top:10px; font-size:11px; color:#666">完成后点击“写入”，然后回到“触发”模式输入数值。</div>
                 </div>`;
             document.getElementById('st').innerText="{}";
             btn.innerText="同步"; btn.disabled=false;
             return;
         }
-        // --- 结束修改 ---
 
+        // ... (后续渲染逻辑逻辑保持 v8.1 相同) ...
         for(let c of validCms){
             let m=c.commit.message;
             let [hd, ...bd]=m.split('\n'), b=bd.join('\n').trim(), [ty, nm]=hd.split('|').map(s=>s.trim());
