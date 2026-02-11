@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Provelance v7.9 - Radiant Code</title>
+<title>Provelance v8.0 - Full Spectrum</title>
 <script src="https://cdn.jsdelivr.net/npm/brython@3/brython.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/brython@3/brython_stdlib.js"></script>
 <link href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism-tomorrow.min.css" rel="stylesheet" />
@@ -28,8 +28,9 @@ body{display:flex;flex-direction:column;height:100dvh}
 .th{padding:12px;display:flex;justify-content:space-between;align-items:center}
 .tb{padding:12px;border-top:1px solid var(--b);background:#00000033;font-size:12px;display:none;flex-direction:column;gap:10px}
 .tb-sec{background:#ffffff0a;padding:8px;border-radius:4px;position:relative;border-left:2px solid var(--b)}
-.tb-pre{margin:5px 0 0 0;white-space:pre-wrap;word-break:break-all;color:#8b949e;max-height:150px;overflow-y:auto}
-.cp-btn{position:absolute;top:5px;right:5px;background:var(--b);color:#ccc;border:none;padding:4px 8px;border-radius:4px;font-size:10px}
+/* 修正：观测界面代码样式 */
+.tb-pre{margin:5px 0 0 0;white-space:pre-wrap!important;word-break:break-all!important;color:#8b949e;max-height:200px;overflow-y:auto;font-size:11px}
+.cp-btn{position:absolute;top:5px;right:5px;background:var(--b);color:#ccc;border:none;padding:4px 8px;border-radius:4px;font-size:10px;z-index:5}
 .diff-row{display:flex;justify-content:space-between;padding:2px 0;font-family:monospace;border-bottom:1px solid #ffffff05}
 .diff-k{color:#8b949e}
 .diff-v{display:flex;gap:8px;align-items:center;max-width:70%;overflow:hidden}
@@ -42,18 +43,22 @@ body{display:flex;flex-direction:column;height:100dvh}
 .form-label{font-size:11px;color:var(--purp);width:70px;font-weight:bold}
 .st-box{height:25%;max-height:180px;background:#000;border-top:1px solid var(--b);padding:10px;overflow:auto;font-size:12px;color:var(--bl);flex-shrink:0}
 
-/* 编辑器容器样式 */
+/* 编辑器容器与换行修正 */
 .editor-container{flex:1;position:relative;overflow:hidden;background:#000}
-#ed, #hl-pre{position:absolute;top:0;left:0;width:100%;height:100%;margin:0;padding:16px;font-size:15px;line-height:1.5;white-space:pre-wrap;word-break:break-all;border:none;outline:none}
-#ed{background:transparent;color:transparent;caret-color:#fff;z-index:2;resize:none;overflow-y:auto}
-#hl-pre{z-index:1;background:transparent;pointer-events:none;overflow:hidden}
-code[class*="language-"]{font-family:monospace!important}
+#ed, #hl-pre, #hl-code{margin:0;padding:16px;font-size:15px;line-height:1.5;font-family:monospace!important;white-space:pre-wrap!important;word-wrap:break-word!important;word-break:break-all!important}
+#ed{position:absolute;top:0;left:0;width:100%;height:100%;background:transparent;color:transparent;caret-color:#fff;z-index:2;resize:none;overflow-y:auto;border:none;outline:none}
+#hl-pre{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;background:transparent;pointer-events:none;overflow:hidden}
+#hl-code{display:block;color:#e6edf3}
 
 .toolbar{background:var(--c);padding:12px;border-bottom:1px solid var(--b);flex-shrink:0}
 .reg-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:10px;scrollbar-width:none}
 .reg-tag{background:var(--b);padding:5px 12px;border-radius:15px;font-size:12px;white-space:nowrap;color:var(--bl);border:1px solid #444}
 .act-bar{padding:12px;background:var(--c);border-top:1px solid var(--b);display:flex;justify-content:space-between;align-items:center}
 .t-R{border-left-color:var(--bl)} .t-A{border-left-color:var(--a)} .t-E{border-left-color:var(--r)}
+
+/* Prism 样式覆盖，确保在卡片内不产生滚动条 */
+pre[class*="language-"]{margin:0;padding:0;background:transparent!important}
+code[class*="language-"]{text-shadow:none!important}
 </style>
 </head>
 <body onload="brython();init()">
@@ -74,7 +79,7 @@ code[class*="language-"]{font-family:monospace!important}
         </div>
         <div id="smart-form" class="form-card"></div>
         <div class="editor-container">
-            <pre id="hl-pre"><code id="hl-code" class="language-python"></code></pre>
+            <pre id="hl-pre" class="language-python"><code id="hl-code" class="language-python"></code></pre>
             <textarea id="ed" spellcheck="false" oninput="onEdInp()" onscroll="onEdScr()"></textarea>
         </div>
         <div class="act-bar"><span id="syn" style="color:var(--a);font-size:12px;font-weight:bold">● 就绪</span><button onclick="cmt()" id="c-btn" style="background:var(--a);color:#fff;border:none;padding:12px 35px;border-radius:8px;font-weight:bold;font-size:15px">⚡ 写入</button></div>
@@ -149,11 +154,9 @@ function init(){
 function sv(){localStorage.setItem('pr',document.getElementById('repo').value);localStorage.setItem('pt',document.getElementById('token').value)}
 function tab(w){document.querySelectorAll('.view').forEach(e=>e.classList.remove('act'));document.getElementById('v-'+w).classList.add('act');document.querySelectorAll('.nav-i').forEach(e=>e.classList.remove('on'));document.getElementById(w=='monitor'?'n-mon':'n-edt').classList.add('on')}
 
-// 编辑器逻辑
 function onEdInp(){
     let area = document.getElementById('ed'), code = document.getElementById('hl-code');
-    // 如果是 ACTION 模式，尝试美化
-    code.innerText = area.value + (area.value.endsWith('\n') ? ' ' : '');
+    code.textContent = area.value + (area.value.endsWith('\n') ? ' ' : '');
     Prism.highlightElement(code);
 }
 function onEdScr(){
@@ -238,7 +241,9 @@ async function sync(){
             let [hd, ...bd]=m.split('\n'), b=bd.join('\n').trim(), [ty, nm]=hd.split('|').map(s=>s.trim());
             let card=document.createElement('div'), resHtml="", codeStr="";
             card.className=`tc t-${ty.charAt(0)}`;
-            if(ty==='RULE'){ reg[nm]=b; resHtml=`<div class="tb-sec"><button class="cp-btn" onclick="cp(this,this.nextElementSibling.innerText)">📋</button><pre class="tb-pre">${b}</pre></div>`;
+            if(ty==='RULE'){ 
+                reg[nm]=b; 
+                resHtml=`<div class="tb-sec"><button class="cp-btn" onclick="cp(this,this.nextElementSibling.querySelector('code').innerText)">📋</button><pre class="tb-pre language-python"><code class="language-python">${b}</code></pre></div>`;
             } else {
                 codeStr = reg[nm] || '# Rule Missing';
                 let p; try{p=window.eng.prs(b)}catch(e){p={}}
@@ -249,6 +254,8 @@ async function sync(){
             card.innerHTML=`<div class="th" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='flex'?'none':'flex'"><span>${ty==='RULE'?'⚖️':'🚀'} <b>${nm}</b></span><span style="color:#666;font-size:11px">${new Date(c.commit.author.date).toLocaleTimeString().slice(0,5)}</span></div><div class="tb">${resHtml}</div>`;
             tl.insertBefore(card, tl.firstChild);
         }
+        // 全局触发一次观测界面的高亮
+        Prism.highlightAllUnder(tl);
         document.getElementById('st').innerText=JSON.stringify(st,null,2);
         Object.keys(reg).forEach(k=>{let t=document.createElement('span');t.className='reg-tag';t.innerText=k;t.onclick=()=>{document.getElementById('m-sel').value='RULE';swM();document.getElementById('r-name').value=k;document.getElementById('ed').value=reg[k];onEdInp();tab('edit')};sc.appendChild(t)});
         renSel(); btn.innerText="同步"; btn.disabled=false;
