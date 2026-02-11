@@ -3,430 +3,487 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Provelance v5.0 | 智能因果终端</title>
+    <title>Provelance v5.1 | 稳定版</title>
     <script src="https://cdn.jsdelivr.net/npm/brython@3/brython.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/brython@3/brython_stdlib.js"></script>
     <style>
         :root { --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --accent: #238636; --blue: #58a6ff; --red: #da3633; --gold: #d29922; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: -apple-system, "Segoe UI", "Consolas", monospace; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", monospace; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        /* 导航 */
-        .nav { background: #010409; border-bottom: 1px solid var(--border); padding: 8px 15px; display: flex; align-items: center; justify-content: space-between; z-index: 100; }
-        .u-name { font-weight: bold; color: var(--gold); font-size: 14px; }
-        .config-trigger { cursor: pointer; font-size: 18px; }
+        /* 1. 顶部连接区 (修复版) */
+        .conn-bar { background: #010409; border-bottom: 1px solid var(--border); padding: 12px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; z-index: 10; box-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+        .logo { font-weight: bold; color: var(--gold); font-size: 14px; white-space: nowrap; margin-right: 10px; }
+        .input-group { display: flex; flex: 1; gap: 8px; min-width: 250px; }
+        input.conf { background: #0d1117; border: 1px solid var(--border); color: white; padding: 6px 10px; border-radius: 4px; font-size: 12px; flex: 1; transition: 0.3s; }
+        input.conf:focus { border-color: var(--blue); }
+        button.conn-btn { background: var(--border); color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+        button.conn-btn.active { background: var(--blue); }
 
-        /* 主布局 */
-        .container { display: flex; flex: 1; overflow: hidden; position: relative; }
-        @media (max-width: 900px) { .container { flex-direction: column; overflow-y: auto; } }
+        /* 2. 主布局 */
+        .layout { display: flex; flex: 1; overflow: hidden; position: relative; }
+        @media (max-width: 800px) { .layout { flex-direction: column; } }
 
-        /* 通用面板 */
-        .panel { display: flex; flex-direction: column; background: var(--bg); border-right: 1px solid var(--border); }
-        .p-header { padding: 10px; font-size: 11px; font-weight: bold; color: #8b949e; background: #161b22; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; }
+        /* 左侧：法则库 */
+        .panel-reg { width: 180px; background: var(--bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+        .panel-head { padding: 10px; font-size: 11px; font-weight: bold; color: #8b949e; background: var(--card); border-bottom: 1px solid var(--border); }
+        .reg-list { flex: 1; overflow-y: auto; }
+        .reg-item { padding: 10px; border-bottom: 1px solid var(--border); font-size: 12px; cursor: pointer; color: var(--blue); }
+        .reg-item:hover { background: #1f2428; }
+        @media (max-width: 800px) { .panel-reg { width: 100%; height: auto; max-height: 120px; display: none; } .panel-reg.show { display: flex; } }
+
+        /* 中间：编辑器 */
+        .panel-edit { flex: 1; display: flex; flex-direction: column; background: #0d1117; position: relative; min-width: 0; }
+        .toolbar { padding: 8px; border-bottom: 1px solid var(--border); display: flex; gap: 8px; background: var(--card); align-items: center; }
+        select.type-sel { background: var(--bg); border: 1px solid var(--border); color: white; padding: 6px; border-radius: 4px; font-size: 13px; }
         
-        /* 1. 法则列表 */
-        .reg-panel { width: 180px; }
-        .rule-item { padding: 10px; border-bottom: 1px solid var(--border); cursor: pointer; font-size: 12px; transition: 0.2s; }
-        .rule-item:hover { background: var(--card); border-left: 3px solid var(--gold); }
-
-        /* 2. 编辑器/表单 */
-        .edit-panel { flex: 2; min-width: 350px; background: #0d1117; }
-        .mode-bar { padding: 10px; display: flex; gap: 8px; background: var(--card); border-bottom: 1px solid var(--border); }
-        select, input { background: var(--bg); border: 1px solid var(--border); color: white; padding: 8px; border-radius: 6px; font-size: 14px; }
+        .code-area { flex: 1; position: relative; display: flex; flex-direction: column; }
+        textarea#editor { flex: 1; background: transparent; color: #e6edf3; border: none; padding: 15px; font-family: 'Consolas', monospace; font-size: 14px; resize: none; line-height: 1.5; }
         
-        .editor-box { flex: 1; position: relative; display: flex; flex-direction: column; }
-        #code-editor { flex: 1; width: 100%; background: transparent; color: #e6edf3; border: none; padding: 15px; font-family: 'Consolas', monospace; font-size: 15px; resize: none; outline: none; }
+        /* 智能表格 */
+        .smart-form { display: none; padding: 15px; flex: 1; overflow-y: auto; background: #0d1117; }
+        .form-row { margin-bottom: 12px; }
+        .form-label { display: block; font-size: 11px; color: var(--gold); margin-bottom: 4px; font-family: monospace; }
+        .form-input { width: 100%; background: #161b22; border: 1px solid var(--border); color: white; padding: 8px; border-radius: 4px; }
+
+        /* 底部操作栏 (Sticky) */
+        .action-bar { padding: 10px 15px; background: var(--card); border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .status-light { font-size: 11px; color: #666; display: flex; align-items: center; gap: 5px; }
+        .btn-commit { background: var(--accent); color: white; border: none; padding: 8px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 13px; }
+        .btn-commit:disabled { opacity: 0.5; cursor: not-allowed; background: var(--border); }
+
+        /* 右侧：时间线 */
+        .panel-view { width: 320px; border-left: 1px solid var(--border); display: flex; flex-direction: column; background: #010409; }
+        .timeline { flex: 1; overflow-y: auto; padding: 10px; }
+        .t-card { background: var(--card); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; overflow: hidden; }
+        .t-head { padding: 8px; font-size: 11px; display: flex; justify-content: space-between; cursor: pointer; background: rgba(255,255,255,0.02); }
+        .t-body { display: none; padding: 10px; font-size: 11px; border-top: 1px solid var(--border); font-family: monospace; white-space: pre-wrap; word-break: break-all; color: #8b949e; }
+        .t-body.open { display: block; }
         
-        /* 智能表单 */
-        .smart-form { display: none; padding: 20px; flex: 1; overflow-y: auto; background: #0d1117; }
-        .form-row { margin-bottom: 15px; display: flex; flex-direction: column; gap: 5px; }
-        .form-row label { font-size: 12px; color: var(--blue); font-weight: bold; }
-        .form-row input { width: 100%; border-color: #444; }
+        .type-RULE { border-left: 3px solid var(--blue); }
+        .type-ACTION { border-left: 3px solid var(--accent); }
+        .type-ERROR { border-left: 3px solid var(--red); }
+        
+        .state-box { height: 140px; background: black; padding: 10px; border-top: 1px solid var(--border); overflow: auto; color: var(--blue); font-size: 11px; font-family: monospace; }
 
-        /* 3. 时间线/状态 */
-        .view-panel { width: 350px; border-left: 1px solid var(--border); }
-        @media (max-width: 900px) { .reg-panel, .edit-panel, .view-panel { width: 100%; border: none; flex: none; } }
-
-        /* 底部动作 */
-        .action-bar { padding: 12px; background: var(--card); border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; bottom: 0; }
-        .btn { border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .btn-sync { background: var(--border); color: var(--text); }
-        .btn-commit { background: var(--accent); color: white; box-shadow: 0 4px 14px rgba(35,134,54,0.4); }
-
-        /* 时间线项 */
-        .timeline { flex: 1; overflow-y: auto; padding: 10px; background: #010409; }
-        .t-item { border-radius: 6px; border: 1px solid var(--border); margin-bottom: 8px; background: var(--card); overflow: hidden; }
-        .t-head { padding: 8px 12px; font-size: 11px; cursor: pointer; display: flex; justify-content: space-between; }
-        .t-body { display: none; padding: 10px; border-top: 1px solid var(--border); font-size: 12px; background: #000; }
-        .active { display: block; }
-        .err-tip { color: var(--red); font-family: monospace; font-size: 11px; margin-top: 5px; }
-
-        /* 语法高亮模拟 */
-        .syntax-hint { position: absolute; right: 10px; top: 10px; font-size: 10px; color: #666; pointer-events: none; }
+        @media (max-width: 800px) { .panel-view { height: 300px; width: 100%; border-left: none; border-top: 1px solid var(--border); } }
     </style>
 </head>
 <body onload="brython(); init();">
 
-    <div class="nav">
-        <div class="u-name">🌌 <span id="cur-universe">Loading...</span></div>
-        <div style="display:flex; gap:10px;">
-            <div id="lint-status" style="font-size:11px; color:var(--accent)">● 语法正常</div>
-            <div class="config-trigger" onclick="toggleConfig()">⚙️</div>
+    <div class="conn-bar">
+        <div class="logo">🌌 PROVELANCE v5.1</div>
+        <div class="input-group">
+            <input type="text" id="repo" class="conf" placeholder="GitHub 用户/仓库名 (User/Repo)" onchange="saveConf()">
+            <input type="password" id="token" class="conf" placeholder="GitHub Token (必填)" onchange="saveConf()">
+            <button class="conn-btn" onclick="sync()" id="sync-btn">🔌 同步宇宙</button>
         </div>
+        <button class="conn-btn" onclick="toggleRegPanel()" style="margin-left:auto; display:none;" id="mobile-menu">📜 法则表</button>
     </div>
 
-    <div id="config-panel" style="display:none; padding:15px; background:var(--card); border-bottom:1px solid var(--border);">
-        <input type="text" id="repo" placeholder="User/Repo" oninput="saveConfig()" style="width:45%">
-        <input type="password" id="token" placeholder="GitHub Token" oninput="saveConfig()" style="width:45%">
-    </div>
-
-    <div class="container">
-        <div class="panel reg-panel">
-            <div class="p-header">法则列表 (REGISTRY)</div>
-            <div id="rule-list" style="overflow-y:auto"></div>
+    <div class="layout">
+        <div class="panel-reg" id="reg-panel">
+            <div class="panel-head">法则 (REGISTRY)</div>
+            <div class="reg-list" id="rule-list">
+                <div style="padding:10px; color:#666; text-align:center;">暂无数据</div>
+            </div>
         </div>
 
-        <div class="panel edit-panel">
-            <div class="mode-bar">
-                <select id="type-sel" onchange="switchMode()">
-                    <option value="ACTION">🚀 触发动作 (ACTION)</option>
-                    <option value="RULE">⚖️ 定义法则 (RULE)</option>
+        <div class="panel-edit">
+            <div class="toolbar">
+                <select id="mode-sel" class="type-sel" onchange="switchMode()">
+                    <option value="ACTION">🚀 触发动作 (Trigger)</option>
+                    <option value="RULE">⚖️ 定义法则 (Define)</option>
                 </select>
-                <div id="func-input-wrap" style="flex:1; display:flex;">
-                    <input type="text" id="rule-name" placeholder="新法则名称..." style="flex:1; display:none;">
-                    <select id="action-target" onchange="handleTargetChange()" style="flex:1;"></select>
+                
+                <div style="flex:1; display:flex;">
+                    <select id="rule-selector" class="type-sel" style="flex:1; display:none;" onchange="loadRuleForm()"></select>
+                    <input type="text" id="rule-namer" class="conf" style="flex:1; display:none;" placeholder="输入新法则名称 (如: trade)">
                 </div>
-                <button id="toggle-ui" class="btn btn-sync" onclick="toggleEditorMode()" style="padding:4px 10px; font-size:11px;">切换 UI</button>
+
+                <button class="conn-btn" id="ui-toggle" onclick="toggleUI()">切换表单</button>
             </div>
 
-            <div class="editor-box">
-                <div class="syntax-hint">PROVELANCE v5.0 | Python 3.x</div>
-                <textarea id="code-editor" spellcheck="false" oninput="onCodeChange()" placeholder="载入代码..."></textarea>
-                
+            <div class="code-area">
+                <textarea id="editor" spellcheck="false" placeholder="在此输入代码..." oninput="checkSyntax()"></textarea>
                 <div id="smart-form" class="smart-form"></div>
             </div>
 
             <div class="action-bar">
-                <button class="btn btn-sync" onclick="sync()">🔌 同步全境</button>
-                <button id="commit-btn" class="btn btn-commit" onclick="commit()">⚡ 写入因果</button>
+                <div class="status-light">
+                    <span id="syntax-dot">●</span> 
+                    <span id="status-text">就绪</span>
+                </div>
+                <button class="btn-commit" id="commit-btn" onclick="commit()">⚡ 写入因果</button>
             </div>
         </div>
 
-        <div class="panel view-panel">
-            <div class="p-header">因果流 (TIMELINE)</div>
-            <div id="timeline" class="timeline"></div>
-            <div class="p-header">状态熵 (STATE)</div>
-            <div style="height:150px; background:#000; padding:10px; overflow:auto;">
-                <pre id="state-json" style="margin:0; font-size:12px; color:var(--blue)"></pre>
+        <div class="panel-view">
+            <div class="panel-head">因果流 (TIMELINE)</div>
+            <div class="timeline" id="timeline"></div>
+            <div class="panel-head">当前状态 (STATE)</div>
+            <div class="state-box">
+                <pre id="state-disp">{}</pre>
             </div>
         </div>
     </div>
 
     <script type="text/python">
-    from browser import window, console
-    import ast, traceback, sys
+    from browser import window
+    import ast
+    import traceback
+    import sys
 
-    # 核心：点号访问代理
+    # 1. 魔法代理：允许 s.balance 访问，且容错
     class MagicProxy:
         def __init__(self, data):
             self.__dict__['_data'] = data
         def __getattr__(self, k):
-            return self._data.get(k)
+            return self._data.get(k) # 不存在返回 None，不报错
         def __setattr__(self, k, v):
             self._data[k] = v
-        def __getitem__(self, k): return self._data[k]
+        def __getitem__(self, k): return self._data.get(k)
         def __setitem__(self, k, v): self._data[k] = v
 
-    def run_engine(code, state_dict, params_dict):
-        # 准备环境：同时提供 s, p 和原生的 state, params
+    # 2. 安全解析器：替代 JS eval，支持 Python 语法
+    def py_parse(text):
+        if not text or not text.strip(): return {}
+        try:
+            return ast.literal_eval(text)
+        except Exception as e:
+            return str(e) # 返回错误字符串
+
+    # 3. 执行引擎
+    def py_run(code, state_dict, params_dict):
+        # 深度复制防止污染？这里简化为直接引用，允许修改
         s = MagicProxy(state_dict)
         p = MagicProxy(params_dict)
         
-        globals_env = {
-            'state': state_dict, 
-            'params': params_dict,
-            's': s,
-            'p': p,
-            'console': console
-        }
-        
-        # 为了支持 return，包装进函数
+        # 包装代码
         indented = "\n".join(["    " + line for line in code.split("\n")])
-        wrapper = f"def _logic(s, p, state, params):\n{indented}\n"
+        wrapper = f"def logic(s, p, state, params):\n{indented}\n"
+        
+        env = {'state': state_dict, 'params': params_dict, 's': s, 'p': p}
         
         try:
-            # 语法检查
-            ast.parse(code)
-            exec(wrapper, globals_env)
-            result = globals_env['_logic'](s, p, state_dict, params_dict)
-            return result if result is not None else state_dict
-        except Exception as e:
+            exec(wrapper, env)
+            # 执行逻辑
+            res = env['logic'](s, p, state_dict, params_dict)
+            return res if res is not None else state_dict
+        except Exception:
             etype, value, tb = sys.exc_info()
             return Exception("".join(traceback.format_exception(etype, value, tb)))
 
-    def lint_check(code):
+    def py_check(code):
         try:
             ast.parse(code)
             return True
-        except Exception as e:
-            return str(e)
+        except:
+            return False
 
-    window.causal_engine = {
-        "run": run_engine,
-        "lint": lint_check
+    window.py_engine = {
+        "parse": py_parse,
+        "run": py_run,
+        "check": py_check
     }
     </script>
 
     <script>
-        let universeRegistry = {};
-        let editorMode = 'CODE'; // CODE or FORM
+        let registry = {};
+        let uiMode = 'CODE'; // CODE or FORM
         const LOG_FILE = "universe.log";
 
         function init() {
-            document.getElementById('repo').value = localStorage.getItem('prov_repo') || '';
-            document.getElementById('token').value = localStorage.getItem('prov_token') || '';
-            updateUniverseUI();
+            // 恢复配置
+            const repo = localStorage.getItem('prov_repo');
+            const token = localStorage.getItem('prov_token');
+            if(repo) document.getElementById('repo').value = repo;
+            if(token) document.getElementById('token').value = token;
+
+            // 移动端菜单显示检测
+            if(window.innerWidth < 800) document.getElementById('mobile-menu').style.display = 'block';
+
+            // 初始状态
             switchMode();
+            checkSyntax();
         }
 
-        function saveConfig() {
+        function saveConf() {
             localStorage.setItem('prov_repo', document.getElementById('repo').value);
             localStorage.setItem('prov_token', document.getElementById('token').value);
-            updateUniverseUI();
         }
 
-        function updateUniverseUI() {
-            const r = document.getElementById('repo').value;
-            document.getElementById('cur-universe').innerText = r ? r.split('/').pop().toUpperCase() : 'PROVELANCE';
+        function toggleRegPanel() {
+            document.getElementById('reg-panel').classList.toggle('show');
         }
 
-        function toggleConfig() {
-            const p = document.getElementById('config-panel');
-            p.style.display = p.style.display === 'none' ? 'block' : 'none';
-        }
-
-        // --- 核心交互逻辑 ---
-
+        // --- 核心模式切换 ---
         function switchMode() {
-            const type = document.getElementById('type-sel').value;
-            const rInp = document.getElementById('rule-name');
-            const aSel = document.getElementById('action-target');
-            const editor = document.getElementById('code-editor');
+            const mode = document.getElementById('mode-sel').value;
+            const rSel = document.getElementById('rule-selector');
+            const rName = document.getElementById('rule-namer');
+            const uiBtn = document.getElementById('ui-toggle');
 
-            if(type === 'RULE') {
-                rInp.style.display = 'block';
-                aSel.style.display = 'none';
-                editor.value = "s.count = (s.count or 0) + p.step\nreturn s";
-                setEditorDisplay('CODE');
+            if (mode === 'ACTION') {
+                rSel.style.display = 'block';
+                rName.style.display = 'none';
+                uiBtn.style.display = 'block';
+                renderRuleSelect();
+                loadRuleForm(); // 加载选中规则的表单
             } else {
-                rInp.style.display = 'none';
-                aSel.style.display = 'block';
-                updateActionTargets();
-                handleTargetChange();
+                rSel.style.display = 'none';
+                rName.style.display = 'block';
+                uiBtn.style.display = 'none';
+                setEditorView('CODE'); // 定义规则强制代码模式
+                document.getElementById('editor').value = "# s.balance += p.amount\nreturn s";
             }
         }
 
-        function updateActionTargets() {
-            const sel = document.getElementById('action-target');
+        function renderRuleSelect() {
+            const sel = document.getElementById('rule-selector');
             sel.innerHTML = '';
-            Object.keys(universeRegistry).forEach(k => {
+            Object.keys(registry).forEach(k => {
                 const opt = document.createElement('option');
                 opt.value = opt.text = k;
                 sel.appendChild(opt);
             });
         }
 
-        function handleTargetChange() {
-            const target = document.getElementById('action-target').value;
-            if(universeRegistry[target]) {
-                document.getElementById('code-editor').value = "{\n  'step': 1\n}";
-                autoGenerateForm(universeRegistry[target]);
-            }
-        }
+        // --- 智能表单逻辑 ---
+        function loadRuleForm() {
+            const ruleName = document.getElementById('rule-selector').value;
+            if(!ruleName || !registry[ruleName]) return;
+            
+            // 默认显示空参数
+            document.getElementById('editor').value = "{}";
+            
+            // 分析代码提取参数 p.xxx
+            const code = registry[ruleName];
+            const regex = /p\.([a-zA-Z0-9_]+)/g;
+            const params = new Set();
+            let m;
+            while((m = regex.exec(code)) !== null) params.add(m[1]);
 
-        // --- 智能语法与表单 ---
-
-        function onCodeChange() {
-            const code = document.getElementById('code-editor').value;
-            const status = window.causal_engine.lint(code);
-            const el = document.getElementById('lint-status');
-            if(status === true) {
-                el.innerText = "● 语法正常";
-                el.style.color = "var(--accent)";
-            } else {
-                el.innerText = "● 语法错误";
-                el.style.color = "var(--red)";
-            }
-        }
-
-        function autoGenerateForm(ruleCode) {
-            const form = document.getElementById('smart-form');
-            form.innerHTML = '';
-            // 正则提取 p.xxx 或 params['xxx']
-            const pDotRegex = /p\.([a-zA-Z_]\w*)/g;
-            const pKeyRegex = /params\[['"](\w+)['"]\]/g;
-            let params = new Set();
-            let match;
-            while ((match = pDotRegex.exec(ruleCode)) !== null) params.add(match[1]);
-            while ((match = pKeyRegex.exec(ruleCode)) !== null) params.add(match[1]);
-
+            // 生成表单
+            const formDiv = document.getElementById('smart-form');
+            formDiv.innerHTML = '';
+            
             if(params.size === 0) {
-                form.innerHTML = '<div style="color:#666; text-align:center">该法则不需要外部参数</div>';
-                return;
+                formDiv.innerHTML = '<div style="color:#666; font-size:12px;">此法则无需参数</div>';
+            } else {
+                params.forEach(key => {
+                    const row = document.createElement('div');
+                    row.className = 'form-row';
+                    row.innerHTML = `
+                        <label class="form-label">${key.toUpperCase()}</label>
+                        <input type="text" class="form-input" data-key="${key}" oninput="syncFormToCode()">
+                    `;
+                    formDiv.appendChild(row);
+                });
             }
-
-            params.forEach(p => {
-                const row = document.createElement('div');
-                row.className = 'form-row';
-                row.innerHTML = `<label>${p.toUpperCase()}</label><input type="text" data-key="${p}" placeholder="输入值..." oninput="syncFormToJson()">`;
-                form.appendChild(row);
-            });
+            
+            // 切换视图
+            if(uiMode === 'FORM') setEditorView('FORM');
+            syncFormToCode(); // 初始化
         }
 
-        function syncFormToJson() {
+        function syncFormToCode() {
             const inputs = document.querySelectorAll('#smart-form input');
             let data = {};
-            inputs.forEach(i => {
-                let val = i.value;
-                // 自动尝试转换数字
-                if(!isNaN(val) && val !== '') val = Number(val);
-                data[i.dataset.key] = val;
+            inputs.forEach(inp => {
+                let v = inp.value;
+                if(!isNaN(v) && v !== '') v = Number(v); // 自动转数字
+                data[inp.dataset.key] = v;
             });
-            document.getElementById('code-editor').value = JSON.stringify(data, null, 2).replace(/"/g, "'");
+            // 使用 Python 风格的单引号
+            document.getElementById('editor').value = JSON.stringify(data, null, 2).replace(/"/g, "'");
         }
 
-        function toggleEditorMode() {
-            setEditorDisplay(editorMode === 'CODE' ? 'FORM' : 'CODE');
+        function toggleUI() {
+            setEditorView(uiMode === 'CODE' ? 'FORM' : 'CODE');
         }
 
-        function setEditorDisplay(m) {
-            editorMode = m;
-            document.getElementById('code-editor').style.display = m === 'CODE' ? 'block' : 'none';
+        function setEditorView(m) {
+            uiMode = m;
+            document.getElementById('editor').style.display = m === 'CODE' ? 'block' : 'none';
             document.getElementById('smart-form').style.display = m === 'FORM' ? 'block' : 'none';
-            document.getElementById('toggle-ui').innerText = m === 'CODE' ? '智能表单' : '原始代码';
+            document.getElementById('ui-toggle').innerText = m === 'CODE' ? '切换表单' : '切换代码';
         }
 
-        // --- 同步与提交 ---
+        function checkSyntax() {
+            const code = document.getElementById('editor').value;
+            const dot = document.getElementById('syntax-dot');
+            // 简单检查
+            const ok = window.py_engine.check(code); 
+            dot.style.color = ok ? 'var(--accent)' : 'var(--red)';
+        }
 
+        // --- 核心同步 ---
         async function sync() {
             const repo = document.getElementById('repo').value;
             const token = document.getElementById('token').value;
-            if(!repo) return alert("请配置仓库");
+            const btn = document.getElementById('sync-btn');
+            
+            if(!repo || !token) return alert("请先填写 Github 仓库和 Token");
 
-            const timeline = document.getElementById('timeline');
-            timeline.innerHTML = '<div style="padding:20px; text-align:center">🌪️ 正在折叠时间轴...</div>';
+            btn.innerText = "⏳...";
+            document.getElementById('status-text').innerText = "正在拉取历史...";
 
             try {
                 let commits = [];
                 let page = 1;
-                const headers = token ? {'Authorization': `token ${token}`} : {};
+                const headers = {'Authorization': `token ${token}`};
+                
+                // 拉取
                 while(true) {
                     const res = await fetch(`https://api.github.com/repos/${repo}/commits?per_page=100&page=${page}`, {headers});
+                    if(!res.ok) throw new Error("连接失败: " + res.status);
                     const data = await res.json();
-                    if(!data.length || page > 5) break;
+                    if(!data.length) break;
                     commits = commits.concat(data);
+                    if(data.length < 100) break;
                     page++;
                 }
                 commits.reverse();
 
+                // 重放
                 let state = {};
-                universeRegistry = {};
+                registry = {};
+                const timeline = document.getElementById('timeline');
                 timeline.innerHTML = '';
+                const ruleList = document.getElementById('rule-list');
+                ruleList.innerHTML = '';
 
-                for(const item of commits) {
-                    const msg = item.commit.message;
+                for(const c of commits) {
+                    const msg = c.commit.message;
                     if(!msg.includes('|')) continue;
                     
-                    const [head, ...bodyArr] = msg.split('\n');
-                    const body = bodyArr.join('\n').trim();
-                    const [type, fName] = head.split('|').map(s => s.trim());
-                    
-                    const card = document.createElement('div');
-                    card.className = `t-item type-${type}`;
-                    let html = `<div class="t-head" onclick="this.nextElementSibling.classList.toggle('active')">
-                                    <span>${type === 'RULE' ? '⚖️' : '🚀'} ${fName}</span>
-                                    <small>${new Date(item.commit.author.date).toLocaleTimeString()}</small>
-                                </div><div class="t-body">`;
+                    const [head, ...bodyParts] = msg.split('\n');
+                    const body = bodyParts.join('\n').trim();
+                    const [type, name] = head.split('|').map(s => s.trim());
+                    const time = new Date(c.commit.author.date).toLocaleTimeString();
 
+                    const card = document.createElement('div');
+                    card.className = `t-card type-${type}`;
+                    
+                    let content = '';
                     if(type === 'RULE') {
-                        universeRegistry[fName] = body;
-                        html += `<pre style="color:var(--gold)">${body}</pre>`;
+                        registry[name] = body;
+                        content = `<span style="color:var(--blue)">定义法则:</span>\n${body}`;
                     } else {
-                        // 执行
-                        const params = eval(`(${body})`); // 简单解析
-                        const result = window.causal_engine.run(universeRegistry[fName] || "", state, params);
+                        // 使用 Python 解析参数，而不是 JS eval
+                        const params = window.py_engine.parse(body);
                         
-                        if(result instanceof Error) {
-                            card.style.borderColor = 'var(--red)';
-                            html += `<div class="err-tip">坍缩报告:</div><pre class="err-tip">${result.message}</pre>`;
+                        if(typeof params === 'string') {
+                            // 解析失败
+                            card.className += ' type-ERROR';
+                            content = `参数格式错误: ${params}\n${body}`;
                         } else {
-                            state = result;
-                            html += `<pre style="color:var(--accent)">参数: ${body}</pre>`;
+                            // 执行
+                            const ruleCode = registry[name] || "";
+                            const res = window.py_engine.run(ruleCode, state, params);
+                            
+                            if(res instanceof Error) {
+                                card.className += ' type-ERROR';
+                                content = `❌ 塌缩 (${res.message})\n参数: ${body}`;
+                            } else {
+                                state = res;
+                                content = `✅ 执行成功\n参数: ${body}`;
+                            }
                         }
                     }
-                    card.innerHTML = html + `</div>`;
+
+                    card.innerHTML = `
+                        <div class="t-head" onclick="this.nextElementSibling.classList.toggle('open')">
+                            <span>${type==='RULE'?'⚖️':'🚀'} ${name}</span>
+                            <span style="opacity:0.6">${time}</span>
+                        </div>
+                        <div class="t-body">${content}</div>
+                    `;
                     timeline.insertBefore(card, timeline.firstChild);
                 }
 
-                document.getElementById('state-json').innerText = JSON.stringify(state, null, 2);
-                renderRuleList();
-                updateActionTargets();
-                document.getElementById('status-text').innerText = "宇宙已达稳态";
-            } catch(e) {
-                alert("同步失败: " + e.message);
-            }
-        }
+                // 更新UI
+                document.getElementById('state-disp').innerText = JSON.stringify(state, null, 2);
+                document.getElementById('status-text').innerText = "同步完成";
+                
+                Object.keys(registry).forEach(k => {
+                    const d = document.createElement('div');
+                    d.className = 'reg-item';
+                    d.innerText = k;
+                    d.onclick = () => {
+                        document.getElementById('mode-sel').value = 'RULE';
+                        document.getElementById('rule-namer').value = k;
+                        document.getElementById('editor').value = registry[k];
+                        switchMode();
+                    };
+                    ruleList.appendChild(d);
+                });
 
-        function renderRuleList() {
-            const list = document.getElementById('rule-list');
-            list.innerHTML = '';
-            Object.keys(universeRegistry).forEach(k => {
-                const div = document.createElement('div');
-                div.className = 'rule-item';
-                div.innerText = k;
-                div.onclick = () => {
-                    document.getElementById('type-sel').value = 'RULE';
-                    document.getElementById('rule-name').value = k;
-                    document.getElementById('code-editor').value = universeRegistry[k];
-                    switchMode();
-                };
-                list.appendChild(div);
-            });
+                // 如果当前是 ACTION 模式，刷新一下下拉列表
+                if(document.getElementById('mode-sel').value === 'ACTION') {
+                    renderRuleSelect();
+                }
+
+                btn.innerText = "🔌 同步宇宙";
+
+            } catch(e) {
+                alert(e.message);
+                btn.innerText = "重试";
+            }
         }
 
         async function commit() {
             const repo = document.getElementById('repo').value;
             const token = document.getElementById('token').value;
-            const type = document.getElementById('type-sel').value;
-            const name = type === 'ACTION' ? document.getElementById('action-target').value : document.getElementById('rule-name').value;
-            const body = document.getElementById('code-editor').value;
+            const mode = document.getElementById('mode-sel').value;
+            const name = mode === 'ACTION' ? document.getElementById('rule-selector').value : document.getElementById('rule-namer').value;
+            const body = document.getElementById('editor').value;
             const btn = document.getElementById('commit-btn');
 
-            if(!name || !token) return alert("请确保填写了名称和 Token");
+            if(!name) return alert("请指定名称");
+            
+            // 提交前最后一次 Python 语法检查
+            if(mode === 'ACTION') {
+                const check = window.py_engine.parse(body);
+                if(typeof check === 'string') return alert("参数格式错误 (请符合Python字典语法):\n" + check);
+            } else {
+                if(!window.py_engine.check(body)) return alert("Python 代码语法错误，请检查缩进或符号");
+            }
 
             btn.disabled = true;
             btn.innerText = "写入中...";
 
             try {
+                // 1. Get SHA
                 let sha = null;
-                const getRes = await fetch(`https://api.github.com/repos/${repo}/contents/${LOG_FILE}`, { headers: {'Authorization': `token ${token}`} });
-                if(getRes.ok) sha = (await getRes.json()).sha;
+                try {
+                    const r = await fetch(`https://api.github.com/repos/${repo}/contents/${LOG_FILE}`, {headers: {'Authorization': `token ${token}`}});
+                    if(r.ok) sha = (await r.json()).sha;
+                } catch(e) {}
 
+                // 2. PUT
                 const res = await fetch(`https://api.github.com/repos/${repo}/contents/${LOG_FILE}`, {
                     method: 'PUT',
                     headers: {'Authorization': `token ${token}`, 'Content-Type': 'application/json'},
-                    body: JSON.stringify({ 
-                        message: `${type} | ${name}\n\n${body}`, 
-                        content: btoa(`Timestamp: ${Date.now()}`), 
-                        sha: sha 
+                    body: JSON.stringify({
+                        message: `${mode} | ${name}\n\n${body}`,
+                        content: btoa(`T:${Date.now()}`),
+                        sha: sha
                     })
                 });
 
-                if(!res.ok) throw new Error("GitHub API 拒绝了写入");
-                btn.innerText = "✅ 成功";
-                setTimeout(() => { btn.disabled = false; btn.innerText = "⚡ 写入因果"; sync(); }, 1000);
+                if(!res.ok) throw new Error("写入被拒绝 (403/404/409)");
+                
+                btn.innerText = "✅ 已写入";
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.innerText = "⚡ 写入因果";
+                    sync();
+                }, 1000);
+
             } catch(e) {
-                alert(e.message);
+                alert("错误: " + e.message);
                 btn.disabled = false;
                 btn.innerText = "⚡ 写入因果";
             }
