@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Provelance v7.5 - Smart Causal</title>
+<title>Provelance v7.6 - Deep Causal</title>
 <script src="https://cdn.jsdelivr.net/npm/brython@3/brython.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/brython@3/brython_stdlib.js"></script>
 <style>
@@ -11,7 +11,7 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;font-family:-apple-system,system-ui,monospace}
 html,body{height:100%;margin:0;padding:0;overflow:hidden;background:var(--bg);color:var(--t)}
 body{display:flex;flex-direction:column;height:100dvh}
-/* UI Components */
+/* UI */
 .top{background:#010409;border-bottom:1px solid var(--b);padding:8px 12px;display:flex;gap:6px;align-items:center;flex-shrink:0}
 .in{background:#0d1117;border:1px solid var(--b);color:#fff;padding:6px 10px;border-radius:6px;font-size:13px;flex:1;min-width:0}
 .btn-s{background:var(--bl);color:#000;border:none;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:bold}
@@ -29,7 +29,7 @@ body{display:flex;flex-direction:column;height:100dvh}
 .tb-sec{background:#ffffff0a;padding:8px;border-radius:4px;position:relative;border-left:2px solid var(--b)}
 .tb-pre{margin:5px 0 0 0;white-space:pre-wrap;word-break:break-all;color:#8b949e;max-height:150px;overflow-y:auto}
 .cp-btn{position:absolute;top:5px;right:5px;background:var(--b);color:#ccc;border:none;padding:4px 8px;border-radius:4px;font-size:10px;z-index:2}
-/* Diff Style */
+/* Diff */
 .diff-row{display:flex;justify-content:space-between;padding:2px 0;font-family:monospace;border-bottom:1px solid #ffffff05}
 .diff-k{color:#8b949e}
 .diff-v{display:flex;gap:8px;align-items:center;max-width:70%;overflow:hidden}
@@ -37,11 +37,11 @@ body{display:flex;flex-direction:column;height:100dvh}
 .v-new.up{color:var(--a);font-weight:bold}
 .v-new.down{color:var(--r);font-weight:bold}
 .v-new.add{color:var(--bl)}
-/* Smart Form */
+/* Form */
 .form-card{background:#1c2128;border:1px solid var(--purp);margin:12px;border-radius:8px;padding:12px;display:none;flex-direction:column;gap:10px}
 .form-row{display:flex;align-items:center;gap:10px}
-.form-label{font-size:11px;color:var(--purp);width:70px;overflow:hidden;text-overflow:ellipsis;font-weight:bold}
-/* Editor Area */
+.form-label{font-size:11px;color:var(--purp);width:70px;font-weight:bold}
+/* Editor */
 .st-box{height:25%;max-height:180px;background:#000;border-top:1px solid var(--b);padding:10px;overflow:auto;font-size:12px;color:var(--bl);flex-shrink:0}
 .toolbar{background:var(--c);padding:12px;border-bottom:1px solid var(--b);flex-shrink:0}
 .reg-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:10px;scrollbar-width:none}
@@ -105,23 +105,44 @@ def get_schema(code):
     try:
         tree = ast.parse(code)
         params = {}
+        alias_map = {}
+        
+        # 1. 追踪别名 (e.g. res = p.res)
         for node in ast.walk(tree):
-            # 基础属性检测: p.name
-            if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.value.id == 'p':
+            if isinstance(node, ast.Assign):
+                src = None
+                if isinstance(node.value, ast.Attribute) and getattr(node.value.value, 'id', '') == 'p':
+                    src = node.value.attr
+                elif isinstance(node.value, ast.Call) and len(node.value.args) > 0:
+                    arg = node.value.args[0]
+                    if isinstance(arg, ast.Attribute) and getattr(arg.value, 'id', '') == 'p':
+                        src = arg.attr
+                if src:
+                    for t in node.targets:
+                        if isinstance(t, ast.Name): 
+                            alias_map[t.id] = src
+                            if src not in params: params[src] = set()
+
+        # 2. 识别属性与比较值
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Attribute) and getattr(node.value, 'id', '') == 'p':
                 if node.attr not in params: params[node.attr] = set()
             
-            # 增强检测: p.name == 'val' 或 p.name in ['a', 'b']
             if isinstance(node, ast.Compare):
-                left = node.left
-                if isinstance(left, ast.Attribute) and isinstance(left.value, ast.Name) and left.value.id == 'p':
-                    p_name = left.attr
+                p_name = None
+                if isinstance(node.left, ast.Attribute) and getattr(node.left.value, 'id', '') == 'p':
+                    p_name = node.left.attr
+                elif isinstance(node.left, ast.Name) and node.left.id in alias_map:
+                    p_name = alias_map[node.left.id]
+                
+                if p_name:
                     if p_name not in params: params[p_name] = set()
                     for op, comp in zip(node.ops, node.comparators):
-                        if isinstance(op, ast.Eq) and isinstance(comp, ast.Constant):
-                            params[p_name].add(str(comp.value))
-                        elif isinstance(op, ast.In) and isinstance(comp, ast.List):
-                            for elt in comp.elts:
-                                if isinstance(elt, ast.Constant): params[p_name].add(str(elt.value))
+                        if isinstance(op, (ast.Eq, ast.In)):
+                            if isinstance(comp, ast.Constant): params[p_name].add(str(comp.value))
+                            elif isinstance(comp, (ast.List, ast.Tuple)):
+                                for e in comp.elts:
+                                    if isinstance(e, ast.Constant): params[p_name].add(str(e.value))
         
         return {k: sorted(list(v)) for k, v in params.items()}
     except: return {}
@@ -161,7 +182,6 @@ function ldF(){
         let input;
         if(schema[pName].length > 0){
             input = document.createElement('select'); input.className='in';
-            // 增加默认空选项以便触发自定义输入
             let empty = document.createElement('option'); empty.text="-- 选择 --"; empty.value=""; input.add(empty);
             schema[pName].forEach(opt => { let o=document.createElement('option'); o.text=opt; o.value=opt; input.add(o)});
         } else { input = document.createElement('input'); input.className='in'; input.placeholder='...'; }
@@ -185,21 +205,15 @@ function cp(btn, txt) {
     navigator.clipboard.writeText(txt).then(()=>{let raw=btn.innerText;btn.innerText="已复制!";setTimeout(()=>btn.innerText=raw,1500)});
 }
 
-// 通用状态对比：包含列表长度比对
 function getDiffHtml(oldS, newS) {
     let html = '<div style="padding:4px 0">';
     const keys = new Set([...Object.keys(oldS), ...Object.keys(newS)]);
     let changed = false;
     keys.forEach(k => {
         let ov = oldS[k], nv = newS[k];
-        let displayOld = ov, displayNew = nv;
-
-        // 列表长度处理
-        if(Array.isArray(ov)) displayOld = `[${ov.length}]`;
-        if(Array.isArray(nv)) displayNew = `[${nv.length}]`;
-
+        let dOld = Array.isArray(ov) ? `[${ov.length}]` : ov;
+        let dNew = Array.isArray(nv) ? `[${nv.length}]` : nv;
         if (JSON.stringify(ov) === JSON.stringify(nv)) return;
-        
         changed = true;
         let cls = 'add', sym = '';
         if (typeof ov === 'number' && typeof nv === 'number') {
@@ -207,11 +221,11 @@ function getDiffHtml(oldS, newS) {
             sym = nv > ov ? '▲' : '▼';
         }
         html += `<div class="diff-row"><span class="diff-k">${k}</span><span class="diff-v">
-            <span class="v-old">${ov !== undefined ? displayOld : ''}</span>
-            <span class="v-new ${cls}">${sym} ${displayNew}</span>
+            <span class="v-old">${ov !== undefined ? dOld : ''}</span>
+            <span class="v-new ${cls}">${sym} ${dNew}</span>
         </span></div>`;
     });
-    return changed ? html + '</div>' : '<div style="color:#555;font-size:11px">无状态变动</div>';
+    return changed ? html + '</div>' : '<div style="color:#555;font-size:11px">无变动</div>';
 }
 
 async function sync(){
@@ -223,62 +237,43 @@ async function sync(){
         cms.reverse();
         let st={}, tl=document.getElementById('tl'); tl.innerHTML=''; reg={};
         let sc=document.getElementById('rl-scroll'); sc.innerHTML='';
-        
         for(let c of cms){
             let m=c.commit.message; if(!m.includes('|'))continue;
             let [hd, ...bd]=m.split('\n'), b=bd.join('\n').trim();
             let [ty, nm]=hd.split('|').map(s=>s.trim());
             let card=document.createElement('div'), resHtml="", codeStr="";
-            
             card.className=`tc t-${ty.charAt(0)}`;
-            if(ty==='RULE'){ 
-                reg[nm]=b; 
-                resHtml=`<div class="tb-sec"><button class="cp-btn" onclick="cp(this,this.nextElementSibling.innerText)">📋 复制</button><pre class="tb-pre">${b}</pre></div>`;
+            if(ty==='RULE'){ reg[nm]=b; resHtml=`<div class="tb-sec"><button class="cp-btn" onclick="cp(this,this.nextElementSibling.innerText)">📋 复制</button><pre class="tb-pre">${b}</pre></div>`;
             } else {
-                codeStr = reg[nm] || '# 未找到法则';
+                codeStr = reg[nm] || '# Missing Rule';
                 let p; try{p=window.eng.prs(b)}catch(e){p={}}
-                
                 let oldSt = JSON.parse(JSON.stringify(st));
                 let ret = window.eng.run(codeStr, st, p);
-                
-                if(typeof ret === 'string'){ 
-                    card.className+=" t-E"; 
-                    resHtml=`<div class="tb-sec"><pre class="tb-pre" style="color:var(--r)">❌ 塌缩: ${ret}</pre></div>`;
+                if(typeof ret === 'string'){ card.className+=" t-E"; resHtml=`<div class="tb-sec"><pre class="tb-pre" style="color:var(--r)">❌ Error: ${ret}</pre></div>`;
                 } else {
                     st = ret;
-                    let diff = getDiffHtml(oldSt, st);
-                    // 增加参数展示区
-                    resHtml = `
-                        <div class="tb-sec" style="border-left-color:var(--purp);margin-bottom:8px">
-                            <span style="font-size:10px;color:var(--purp);display:block">INPUT PARAMETERS:</span>
-                            <button class="cp-btn" onclick="cp(this,'${b.replace(/'/g,"\\'")}')">📋</button>
-                            <pre class="tb-pre" style="color:var(--t)">${b}</pre>
-                        </div>
-                        <div class="tb-sec" style="color:var(--y)">💬 ${st.last_action || 'OK'}</div>
-                        <div class="tb-sec"><b>状态变化:</b>${diff}</div>`;
+                    resHtml = `<div class="tb-sec" style="border-left-color:var(--purp);margin-bottom:8px"><span style="font-size:10px;color:var(--purp);display:block">INPUT:</span><button class="cp-btn" onclick="cp(this,'${b.replace(/'/g,"\\'")}')">📋</button><pre class="tb-pre">${b}</pre></div>
+                               <div class="tb-sec" style="color:var(--y)">💬 ${st.last_action || 'OK'}</div>
+                               <div class="tb-sec"><b>状态变化:</b>${getDiffHtml(oldSt, st)}</div>`;
                 }
             }
-            card.innerHTML=`<div class="th" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='flex'?'none':'flex'">
-                <span>${ty==='RULE'?'⚖️':'🚀'} <b>${nm}</b></span>
-                <span style="color:#666;font-size:11px">${new Date(c.commit.author.date).toLocaleTimeString().slice(0,5)}</span>
-            </div>
-            <div class="tb">${resHtml}</div>`;
+            card.innerHTML=`<div class="th" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='flex'?'none':'flex'"><span>${ty==='RULE'?'⚖️':'🚀'} <b>${nm}</b></span><span style="color:#666;font-size:11px">${new Date(c.commit.author.date).toLocaleTimeString().slice(0,5)}</span></div><div class="tb">${resHtml}</div>`;
             tl.insertBefore(card, tl.firstChild);
         }
         document.getElementById('st').innerText=JSON.stringify(st,null,2);
         Object.keys(reg).forEach(k=>{let t=document.createElement('span');t.className='reg-tag';t.innerText=k;t.onclick=()=>{document.getElementById('m-sel').value='RULE';swM();document.getElementById('r-name').value=k;document.getElementById('ed').value=reg[k];tab('edit')};sc.appendChild(t)});
         renSel(); btn.innerText="同步"; btn.disabled=false;
-    }catch(e){alert('错误: '+e);btn.innerText="重试";btn.disabled=false}
+    }catch(e){alert('Sync Error: '+e);btn.innerText="Retry";btn.disabled=false}
 }
 async function cmt(){
     let rp=document.getElementById('repo').value, tk=document.getElementById('token').value, btn=document.getElementById('c-btn');
     let m=document.getElementById('m-sel').value, b=document.getElementById('ed').value, n=m==='ACTION'?document.getElementById('r-sel').value:document.getElementById('r-name').value;
-    if(!n)return alert('名称无效'); btn.innerText="写入中..."; btn.disabled=true;
+    if(!n)return alert('Name invalid'); btn.innerText="Writing..."; btn.disabled=true;
     try{
         let sha, r=await fetch(`https://api.github.com/repos/${rp}/contents/${LOG}`,{headers:{'Authorization':`token ${tk}`}}); if(r.ok)sha=(await r.json()).sha;
         await fetch(`https://api.github.com/repos/${rp}/contents/${LOG}`,{method:'PUT',headers:{'Authorization':`token ${tk}`,'Content-Type':'application/json'},body:JSON.stringify({message:`${m} | ${n}\n\n${b}`,content:btoa(`T:${Date.now()}`),sha:sha})});
-        btn.innerText="✅ 已写入"; setTimeout(()=>{btn.innerText="⚡ 写入因果";btn.disabled=false;sync();tab('monitor')},1000);
-    }catch(e){alert('写入: '+e);btn.disabled=false}
+        btn.innerText="✅ OK"; setTimeout(()=>{btn.innerText="⚡ 写入因果";btn.disabled=false;sync();tab('monitor')},1000);
+    }catch(e){alert('Commit Error: '+e);btn.disabled=false}
 }
 </script>
 </body>
