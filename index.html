@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Provelance v8.0 - Full Spectrum</title>
+<title>Provelance v8.2 - Full Spectrum</title>
 <script src="https://cdn.jsdelivr.net/npm/brython@3/brython.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/brython@3/brython_stdlib.js"></script>
 <link href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism-tomorrow.min.css" rel="stylesheet" />
@@ -28,7 +28,6 @@ body{display:flex;flex-direction:column;height:100dvh}
 .th{padding:12px;display:flex;justify-content:space-between;align-items:center}
 .tb{padding:12px;border-top:1px solid var(--b);background:#00000033;font-size:12px;display:none;flex-direction:column;gap:10px}
 .tb-sec{background:#ffffff0a;padding:8px;border-radius:4px;position:relative;border-left:2px solid var(--b)}
-/* 修正：观测界面代码样式 */
 .tb-pre{margin:5px 0 0 0;white-space:pre-wrap!important;word-break:break-all!important;color:#8b949e;max-height:200px;overflow-y:auto;font-size:11px}
 .cp-btn{position:absolute;top:5px;right:5px;background:var(--b);color:#ccc;border:none;padding:4px 8px;border-radius:4px;font-size:10px;z-index:5}
 .diff-row{display:flex;justify-content:space-between;padding:2px 0;font-family:monospace;border-bottom:1px solid #ffffff05}
@@ -43,12 +42,71 @@ body{display:flex;flex-direction:column;height:100dvh}
 .form-label{font-size:11px;color:var(--purp);width:70px;font-weight:bold}
 .st-box{height:25%;max-height:180px;background:#000;border-top:1px solid var(--b);padding:10px;overflow:auto;font-size:12px;color:var(--bl);flex-shrink:0}
 
-/* 编辑器容器与换行修正 */
+/* === 核心修复：编辑器样式 === */
 .editor-container{flex:1;position:relative;overflow:hidden;background:#000}
-#ed, #hl-pre, #hl-code{margin:0;padding:16px;font-size:15px;line-height:1.5;font-family:monospace!important;white-space:pre-wrap!important;word-wrap:break-word!important;word-break:break-all!important}
-#ed{position:absolute;top:0;left:0;width:100%;height:100%;background:transparent;color:transparent;caret-color:#fff;z-index:2;resize:none;overflow-y:auto;border:none;outline:none}
-#hl-pre{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;background:transparent;pointer-events:none;overflow:hidden}
-#hl-code{display:block;color:#e6edf3}
+
+/* 统一字体栈和排版属性，确保像素级对齐 */
+#ed, #hl-pre, #hl-code {
+    margin: 0;
+    padding: 16px;
+    font-size: 14px; /* 稍微调小一点，增强移动端可读性 */
+    line-height: 1.5;
+    /* 强制使用特定的等宽字体栈，避免 textarea 和 pre 渲染不一致 */
+    font-family: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace !important;
+    /* 统一 Tab 大小，解决缩进导致的错位 */
+    tab-size: 4 !important;
+    -moz-tab-size: 4 !important;
+    /* 统一换行规则 */
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+    word-break: break-all !important;
+    /* 禁用连字和自动调整，防止字符宽度变化 */
+    font-variant-ligatures: none;
+    letter-spacing: 0 !important;
+}
+
+#ed {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    color: transparent; /* 文本透明 */
+    caret-color: #fff; /* 光标白色 */
+    z-index: 2;
+    resize: none;
+    overflow-y: auto;
+    border: none;
+    outline: none;
+    /* 移除文本阴影，防止透明文字产生鬼影 */
+    text-shadow: none !important;
+    -webkit-text-fill-color: transparent;
+}
+
+/* 解决双影问题：选中时强制文本颜色保持透明，只显示背景色 */
+#ed::selection {
+    background: rgba(88, 166, 255, 0.3); /* 半透明蓝色背景 */
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+}
+
+#hl-pre {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    background: transparent;
+    pointer-events: none;
+    overflow: hidden; /* 滚动由 textarea 接管 */
+}
+
+#hl-code {
+    display: block;
+    color: #e6edf3;
+}
 
 .toolbar{background:var(--c);padding:12px;border-bottom:1px solid var(--b);flex-shrink:0}
 .reg-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:10px;scrollbar-width:none}
@@ -56,9 +114,9 @@ body{display:flex;flex-direction:column;height:100dvh}
 .act-bar{padding:12px;background:var(--c);border-top:1px solid var(--b);display:flex;justify-content:space-between;align-items:center}
 .t-R{border-left-color:var(--bl)} .t-A{border-left-color:var(--a)} .t-E{border-left-color:var(--r)}
 
-/* Prism 样式覆盖，确保在卡片内不产生滚动条 */
-pre[class*="language-"]{margin:0;padding:0;background:transparent!important}
-code[class*="language-"]{text-shadow:none!important}
+/* Prism 样式覆盖 */
+pre[class*="language-"]{margin:0;padding:0;background:transparent!important;overflow:visible!important}
+code[class*="language-"]{text-shadow:none!important;font-family:inherit!important}
 </style>
 </head>
 <body onload="brython();init()">
@@ -156,7 +214,10 @@ function tab(w){document.querySelectorAll('.view').forEach(e=>e.classList.remove
 
 function onEdInp(){
     let area = document.getElementById('ed'), code = document.getElementById('hl-code');
-    code.textContent = area.value + (area.value.endsWith('\n') ? ' ' : '');
+    // 关键修正：确保尾部换行符处理一致，否则光标在最后一行会跳动
+    let txt = area.value;
+    if(txt.endsWith('\n')) txt += ' '; 
+    code.textContent = txt;
     Prism.highlightElement(code);
 }
 function onEdScr(){
@@ -267,7 +328,6 @@ async function sync(){
             return;
         }
 
-        // ... (后续渲染逻辑逻辑保持 v8.1 相同) ...
         for(let c of validCms){
             let m=c.commit.message;
             let [hd, ...bd]=m.split('\n'), b=bd.join('\n').trim(), [ty, nm]=hd.split('|').map(s=>s.trim());
