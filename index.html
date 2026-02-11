@@ -66,26 +66,36 @@ body{display:flex;flex-direction:column;height:100dvh}
 <script type="text/python">
 from browser import window
 import ast
+
 class SafeProxy:
     def __init__(self, d):
         self._d = d.to_dict() if hasattr(d,'to_dict') else (d if isinstance(d,dict) else dict(d))
+    
+    # 新增：显式支持 get 方法，修复 'int' object is not callable 错误
+    def get(self, k, default=0):
+        return self._d.get(k, default)
+
     def __getattr__(self, k): 
+        if k == 'get': return self.get
         v = self._d.get(k, 0)
         if isinstance(v, str):
             try: return float(v.replace(' ', '.'))
             except: return v
         return v
+        
     def __setattr__(self, k, v):
         if k=='_d': object.__setattr__(self, k, v)
         else: self._d[k] = v
+
 def py_run(code, state_in, params_in):
     try:
         s, p = SafeProxy(state_in), SafeProxy(params_in)
-        # 核心修复：显式注入标准数值函数，防止 shadowing 导致的 TypeError
+        # 显式注入数值函数，确保环境纯净
         env = {'s':s,'p':p,'int':int,'float':float,'round':round,'abs':abs,'max':max,'min':min}
         exec(code, env)
         return s._d
     except Exception as e: return str(e)
+
 window.eng = {"run":py_run, "prs":lambda b:ast.literal_eval(b)}
 </script>
 
