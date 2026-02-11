@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Provelance v7.0</title>
+<title>Provelance v7.2</title>
 <script src="https://cdn.jsdelivr.net/npm/brython@3/brython.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/brython@3/brython_stdlib.js"></script>
 <style>
-:root{--bg:#0d1117;--c:#161b22;--b:#30363d;--t:#c9d1d9;--a:#238636;--bl:#58a6ff;--r:#da3633;--purp:#bc8cff}
+:root{--bg:#0d1117;--c:#161b22;--b:#30363d;--t:#c9d1d9;--a:#238636;--bl:#58a6ff;--r:#da3633;--purp:#bc8cff;--y:#d29922}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;font-family:-apple-system,system-ui,monospace}
 html,body{height:100%;margin:0;padding:0;overflow:hidden;background:var(--bg);color:var(--t)}
 body{display:flex;flex-direction:column;height:100dvh}
@@ -29,6 +29,14 @@ body{display:flex;flex-direction:column;height:100dvh}
 .tb-sec{background:#ffffff0a;padding:8px;border-radius:4px;position:relative}
 .tb-pre{margin:5px 0 0 0;white-space:pre-wrap;word-break:break-all;color:#8b949e;max-height:150px;overflow-y:auto}
 .cp-btn{position:absolute;top:5px;right:5px;background:var(--b);color:#ccc;border:none;padding:4px 8px;border-radius:4px;font-size:10px}
+/* Diff Style */
+.diff-row{display:flex;justify-content:space-between;padding:2px 0;font-family:monospace}
+.diff-k{color:#8b949e}
+.diff-v{display:flex;gap:8px;align-items:center}
+.v-old{text-decoration:line-through;opacity:0.5}
+.v-new.up{color:var(--a);font-weight:bold}
+.v-new.down{color:var(--r);font-weight:bold}
+.v-new.add{color:var(--bl)}
 /* Smart Form */
 .form-card{background:#1c2128;border:1px solid var(--purp);margin:12px;border-radius:8px;padding:12px;display:none;flex-direction:column;gap:10px}
 .form-row{display:flex;align-items:center;gap:10px}
@@ -108,10 +116,6 @@ def get_schema(code):
                             if isinstance(comp, (ast.Constant, ast.Str)): 
                                 val = comp.value if hasattr(comp,'value') else comp.s
                                 if val not in params[p_name]: params[p_name].append(val)
-                            elif isinstance(comp, ast.List):
-                                for e in comp.elts:
-                                    v = e.value if hasattr(e,'value') else e.s
-                                    if v not in params[p_name]: params[p_name].append(v)
         return params
     except: return {}
 
@@ -119,7 +123,7 @@ window.eng = {"run":py_run, "prs":lambda b:ast.literal_eval(b), "get_schema":get
 </script>
 
 <script>
-let reg={}, LOG="universe.log", currentParams={};
+let reg={}, LOG="universe.log";
 function init(){
     let r=localStorage.getItem('pr'), t=localStorage.getItem('pt');
     if(r)document.getElementById('repo').value=r;
@@ -140,14 +144,10 @@ function renSel(){
     Object.keys(reg).sort().forEach(k=>{let o=document.createElement('option');o.text=k;s.add(o)});
     ldF();
 }
-// 核心逻辑：加载并生成智能表单
 function ldF(){
     let k=document.getElementById('r-sel').value; if(!k||!reg[k])return;
-    let code = reg[k];
-    let schema = window.eng.get_schema(code);
+    let schema = window.eng.get_schema(reg[k]);
     let f = document.getElementById('smart-form'); f.innerHTML='';
-    currentParams = {};
-
     Object.keys(schema).forEach(pName => {
         let row = document.createElement('div'); row.className='form-row';
         let lbl = document.createElement('div'); lbl.className='form-label'; lbl.innerText=pName;
@@ -155,13 +155,10 @@ function ldF(){
         if(schema[pName].length > 0){
             input = document.createElement('select'); input.className='in';
             schema[pName].forEach(opt => { let o=document.createElement('option'); o.text=opt; input.add(o)});
-        } else {
-            input = document.createElement('input'); input.className='in'; input.placeholder='value';
-        }
+        } else { input = document.createElement('input'); input.className='in'; input.placeholder='value'; }
         input.onchange = () => syncFormToCode();
         input.dataset.pname = pName;
         row.appendChild(lbl); row.appendChild(input); f.appendChild(row);
-        currentParams[pName] = input.value;
     });
     syncFormToCode();
 }
@@ -169,8 +166,7 @@ function syncFormToCode(){
     if(document.getElementById('m-sel').value !== 'ACTION') return;
     let params = {};
     document.querySelectorAll('#smart-form .in').forEach(i => {
-        let val = i.value;
-        if(!isNaN(val) && val.trim()!=='') val = parseFloat(val);
+        let val = i.value; if(!isNaN(val) && val.trim()!=='') val = parseFloat(val);
         params[i.dataset.pname] = val;
     });
     document.getElementById('ed').value = JSON.stringify(params, null, 2).replace(/"/g, "'");
@@ -179,6 +175,29 @@ function cp(btn, sel) {
     const txt = btn.parentNode.querySelector(sel).innerText;
     navigator.clipboard.writeText(txt).then(()=>{let raw=btn.innerText;btn.innerText="已复制!";setTimeout(()=>btn.innerText=raw,1500)});
 }
+
+// 核心函数：计算状态差异并生成 HTML
+function getDiffHtml(oldS, newS) {
+    let html = '<div style="padding:4px 0">';
+    const keys = new Set([...Object.keys(oldS), ...Object.keys(newS)]);
+    keys.forEach(k => {
+        if (k === 'last_action' || k === 'orders') return; // 略过元数据
+        let ov = oldS[k], nv = newS[k];
+        if (JSON.stringify(ov) === JSON.stringify(nv)) return;
+        
+        let cls = 'add', sym = '';
+        if (typeof ov === 'number' && typeof nv === 'number') {
+            cls = nv > ov ? 'up' : 'down';
+            sym = nv > ov ? '▲' : '▼';
+        }
+        html += `<div class="diff-row"><span class="diff-k">${k}</span><span class="diff-v">
+            <span class="v-old">${ov !== undefined ? ov : ''}</span>
+            <span class="v-new ${cls}">${sym} ${nv}</span>
+        </span></div>`;
+    });
+    return html + '</div>';
+}
+
 async function sync(){
     let rp=document.getElementById('repo').value,tk=document.getElementById('token').value,btn=document.getElementById('s-btn');
     if(!rp||!tk)return; btn.innerText="..."; btn.disabled=true;
@@ -188,30 +207,47 @@ async function sync(){
         cms.reverse();
         let st={}, tl=document.getElementById('tl'); tl.innerHTML=''; reg={};
         let sc=document.getElementById('rl-scroll'); sc.innerHTML='';
+        
         for(let c of cms){
             let m=c.commit.message; if(!m.includes('|'))continue;
             let [hd, ...bd]=m.split('\n'), b=bd.join('\n').trim();
             let [ty, nm]=hd.split('|').map(s=>s.trim());
-            let card=document.createElement('div'), res="", isErr=false, codeStr="";
+            let card=document.createElement('div'), resHtml="", isErr=false, codeStr="";
+            
             card.className=`tc t-${ty.charAt(0)}`;
-            if(ty==='RULE'){ reg[nm]=b; res=`⚖️ 法则已挂载`; codeStr=b; }
-            else{ codeStr=reg[nm]||'# 未找到定义';
+            if(ty==='RULE'){ 
+                reg[nm]=b; 
+                resHtml=`<div class="tb-sec"><button class="cp-btn" onclick="cp(this,'.tb-pre')">📋 复制</button><pre class="tb-pre">${b}</pre></div>`;
+            } else {
+                codeStr = reg[nm] || '# 未找到法则';
                 let p; try{p=window.eng.prs(b)}catch(e){p={}}
-                let ret=window.eng.run(codeStr, st, p);
-                if(typeof ret === 'string'){ card.className+=" t-E"; res=`❌ 塌缩: ${ret}`; isErr=true; }
-                else{ st=ret; res=`🚀 运行成功`; }
+                
+                // 捕获快照
+                let oldSt = JSON.parse(JSON.stringify(st));
+                let ret = window.eng.run(codeStr, st, p);
+                
+                if(typeof ret === 'string'){ 
+                    card.className+=" t-E"; 
+                    resHtml=`<div class="tb-sec"><pre class="tb-pre" style="color:var(--r)">❌ 塌缩: ${ret}</pre></div>`;
+                    isErr=true; 
+                } else {
+                    st = ret;
+                    let diff = getDiffHtml(oldSt, st);
+                    resHtml = `<div class="tb-sec" style="color:var(--y)">💬 ${st.last_action || '执行成功'}</div>
+                               <div class="tb-sec"><b>状态变化:</b>${diff || '<div style="color:#555;font-size:11px">无数值变动</div>'}</div>`;
+                }
             }
-            card.innerHTML=`<div class="th" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='flex'?'none':'flex'"><span>${ty==='RULE'?'⚖️':'🚀'} <b>${nm}</b></span><span style="color:#666">${new Date(c.commit.author.date).toLocaleTimeString().slice(0,5)}</span></div>
-            <div class="tb">
-                <div class="tb-sec"><button class="cp-btn" onclick="cp(this,'.tb-pre')">📋 复制信息</button><pre class="tb-pre" style="color:${isErr?'var(--r)':'var(--t)'}">${res}</pre></div>
-                <div class="tb-sec"><button class="cp-btn" onclick="cp(this,'.tb-pre')">📋 复制代码</button><pre class="tb-pre">${codeStr}</pre></div>
-            </div>`;
+            card.innerHTML=`<div class="th" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='flex'?'none':'flex'">
+                <span>${ty==='RULE'?'⚖️':'🚀'} <b>${nm}</b></span>
+                <span style="color:#666;font-size:11px">${new Date(c.commit.author.date).toLocaleTimeString().slice(0,5)}</span>
+            </div>
+            <div class="tb">${resHtml}</div>`;
             tl.insertBefore(card, tl.firstChild);
         }
         document.getElementById('st').innerText=JSON.stringify(st,null,2);
         Object.keys(reg).forEach(k=>{let t=document.createElement('span');t.className='reg-tag';t.innerText=k;t.onclick=()=>{document.getElementById('m-sel').value='RULE';swM();document.getElementById('r-name').value=k;document.getElementById('ed').value=reg[k];tab('edit')};sc.appendChild(t)});
         renSel(); btn.innerText="同步"; btn.disabled=false;
-    }catch(e){alert('同步: '+e);btn.innerText="重试";btn.disabled=false}
+    }catch(e){alert('错误: '+e);btn.innerText="重试";btn.disabled=false}
 }
 async function cmt(){
     let rp=document.getElementById('repo').value, tk=document.getElementById('token').value, btn=document.getElementById('c-btn');
