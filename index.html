@@ -3,38 +3,46 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Provelance v5.4</title>
+<title>Provelance v5.5</title>
 <script src="https://cdn.jsdelivr.net/npm/brython@3/brython.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/brython@3/brython_stdlib.js"></script>
 <style>
-:root{--bg:#0d1117;--c:#161b22;--b:#30363d;--t:#c9d1d9;--a:#238636;--bl:#58a6ff;--r:#da3633;--g:#d29922}
+:root{--bg:#0d1117;--c:#161b22;--b:#30363d;--t:#c9d1d9;--a:#238636;--bl:#58a6ff;--r:#da3633}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{font-family:-apple-system,monospace;background:var(--bg);color:var(--t);margin:0;display:flex;flex-direction:column;height:100vh;overflow:hidden}
-.top{background:#010409;border-bottom:1px solid var(--b);padding:5px;display:flex;gap:5px;z-index:9}
-.in{background:#0d1117;border:1px solid var(--b);color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;flex:1;min-width:0}
-.btn{background:var(--b);color:#fff;border:none;padding:5px 10px;border-radius:4px;font-size:12px}
+/* 顶部 */
+.top{background:#010409;border-bottom:1px solid var(--b);padding:6px;display:flex;gap:5px;z-index:9}
+.in{background:#0d1117;border:1px solid var(--b);color:#fff;padding:6px;border-radius:4px;font-size:12px;flex:1;min-width:0}
+.btn{background:var(--b);color:#fff;border:none;padding:6px 10px;border-radius:4px;font-size:12px}
+/* 容器 */
 .main{flex:1;position:relative;overflow:hidden;display:flex;flex-direction:column}
 .view{position:absolute;top:0;left:0;width:100%;height:100%;display:none;flex-direction:column;background:var(--bg)}
 .view.act{display:flex}
-.nav{height:45px;background:var(--c);border-top:1px solid var(--b);display:flex;justify-content:space-around;align-items:center}
-.nav-i{display:flex;flex-direction:column;align-items:center;font-size:10px;color:#666}
-.nav-i.on{color:var(--bl)}
-.tl{flex:1;overflow-y:auto;padding:8px}
-.tc{background:var(--c);border:1px solid var(--b);border-radius:6px;margin-bottom:6px;font-size:12px;border-left:3px solid transparent}
+/* 列表 */
+.tl{flex:1;overflow-y:auto;padding:10px}
+.tc{background:var(--c);border:1px solid var(--b);border-radius:6px;margin-bottom:8px;font-size:12px;border-left:4px solid transparent}
 .th{padding:8px;display:flex;justify-content:space-between;font-size:11px}
-.tb{padding:8px;border-top:1px dotted var(--b);white-space:pre-wrap;font-family:monospace;color:#8b949e;display:none;font-size:11px}
+.tb{padding:10px;border-top:1px dotted var(--b);white-space:pre-wrap;color:#8b949e;display:none;font-size:11px}
 .tb.open{display:block}
 .st-box{height:120px;background:#000;border-top:1px solid var(--b);padding:8px;overflow:auto;font-family:monospace;color:var(--bl);font-size:11px}
+/* 编辑器 */
+.toolbar{padding:8px;border-bottom:1px solid var(--b);display:flex;gap:6px;background:var(--c);align-items:center}
+.sel{background:var(--bg);border:1px solid var(--b);color:#fff;font-size:12px;padding:6px;border-radius:4px}
+#ed{flex:1;background:transparent;color:#e6edf3;border:none;padding:12px;font-family:monospace;font-size:14px;resize:none;line-height:1.5}
+.reg-list{position:absolute;top:45px;left:0;right:0;max-height:60%;background:var(--c);border-bottom:1px solid var(--b);z-index:10;display:none;overflow-y:auto}
+.reg-i{padding:12px;border-bottom:1px solid var(--b);font-size:13px;color:var(--bl)}
+/* 底部导航 */
+.nav{height:50px;background:var(--c);border-top:1px solid var(--b);display:flex;justify-content:space-around;align-items:center}
+.nav-i{display:flex;flex-direction:column;align-items:center;font-size:11px;color:#666;font-weight:bold}
+.nav-i.on{color:var(--bl)}
+/* 状态颜色 */
 .t-R{border-left-color:var(--bl)} .t-A{border-left-color:var(--a)} .t-E{border-left-color:var(--r)}
-#ed{flex:1;background:transparent;color:#e6edf3;border:none;padding:12px;font-family:monospace;font-size:14px;resize:none}
-.toolbar{padding:5px;border-bottom:1px solid var(--b);display:flex;gap:5px;background:var(--c)}
-.sel{background:var(--bg);border:1px solid var(--b);color:#fff;font-size:12px;padding:4px}
 </style>
 </head>
 <body onload="brython();init()">
 
 <div class="top">
-    <input id="repo" class="in" placeholder="Repo" onchange="sv()">
+    <input id="repo" class="in" placeholder="User/Repo" onchange="sv()">
     <input id="token" type="password" class="in" placeholder="Token" onchange="sv()">
     <button class="btn" onclick="sync()" id="s-btn">🔄 同步</button>
 </div>
@@ -42,28 +50,34 @@ body{font-family:-apple-system,monospace;background:var(--bg);color:var(--t);mar
 <div class="main">
     <div id="v-monitor" class="view act">
         <div class="tl" id="tl"></div>
+        <div style="padding:4px 10px;font-size:10px;color:#555;background:#000">最终状态 (STATE)</div>
         <div class="st-box"><pre id="st">{}</pre></div>
     </div>
+
     <div id="v-edit" class="view">
+        <div id="rl" class="reg-list"></div>
         <div class="toolbar">
+            <button class="btn" onclick="togReg()">📜 法则表</button>
             <select id="m-sel" class="sel" onchange="swM()">
                 <option value="ACTION">🚀 触发</option>
                 <option value="RULE">⚖️ 定义</option>
             </select>
-            <select id="r-sel" class="sel" style="flex:1;display:none" onchange="ldF()"></select>
-            <input id="r-name" class="in" style="flex:1;display:none" placeholder="法则名">
+            <div style="flex:1;display:flex">
+                <select id="r-sel" class="sel" style="flex:1;display:none" onchange="ldF()"></select>
+                <input id="r-name" class="in" style="flex:1;display:none" placeholder="输入新法则名称">
+            </div>
         </div>
-        <textarea id="ed" spellcheck="false"></textarea>
-        <div style="padding:8px;display:flex;justify-content:space-between;background:var(--c)">
-            <span id="syn" style="color:var(--a);font-size:12px">● 就绪</span>
-            <button onclick="cmt()" id="c-btn" style="background:var(--a);color:#fff;border:none;padding:6px 15px;border-radius:4px;font-weight:bold">⚡ 写入因果</button>
+        <textarea id="ed" spellcheck="false" placeholder="在此输入代码..."></textarea>
+        <div style="padding:10px;display:flex;justify-content:space-between;align-items:center;background:var(--c);border-top:1px solid var(--b)">
+            <span id="syn" style="color:var(--a);font-size:11px">● 就绪</span>
+            <button onclick="cmt()" id="c-btn" style="background:var(--a);color:#fff;border:none;padding:10px 25px;border-radius:6px;font-weight:bold;font-size:14px">⚡ 写入因果</button>
         </div>
     </div>
 </div>
 
 <div class="nav">
-    <div class="nav-i on" onclick="tab('monitor')" id="n-mon">观测</div>
-    <div class="nav-i" onclick="tab('edit')" id="n-edt">撰写</div>
+    <div class="nav-i on" onclick="tab('monitor')" id="n-mon"><span style="font-size:18px">👁️</span>观测</div>
+    <div class="nav-i" onclick="tab('edit')" id="n-edt"><span style="font-size:18px">✍️</span>撰写</div>
 </div>
 
 <script type="text/python">
@@ -71,27 +85,21 @@ from browser import window
 import ast
 
 class SafeProxy:
-    def __init__(self, data):
-        object.__setattr__(self, '_d', data)
-    def __getattr__(self, k):
-        return self._d.get(k, None) # 找不到返回 None 而不报错
-    def __setattr__(self, k, v):
-        self._d[k] = v
+    def __init__(self, d): object.__setattr__(self, '_d', d)
+    def __getattr__(self, k): return self._d.get(k, None)
+    def __setattr__(self, k, v): self._d[k] = v
     def __getitem__(self, k): return self._d.get(k)
     def __setitem__(self, k, v): self._d[k] = v
 
 def py_run(code, state, params):
     try:
-        s = SafeProxy(state)
-        p = SafeProxy(params)
-        env = {'s': s, 'p': p, 'state': state, 'params': params}
-        # 直接执行，不再包装函数以减少 Brython 作用域开销
+        s, p = SafeProxy(state), SafeProxy(params)
+        env = {'s':s, 'p':p, 'state':state, 'params':params}
         exec(code, env)
         return state
-    except Exception as e:
-        return Exception(str(e))
+    except Exception as e: return Exception(str(e))
 
-window.eng = {"run": py_run, "chk": lambda c: ast.parse(c), "prs": ast.literal_eval}
+window.eng = {"run":py_run, "chk":lambda c:ast.parse(c), "prs":ast.literal_eval}
 </script>
 
 <script>
@@ -111,12 +119,17 @@ function tab(w){
     document.getElementById('v-'+w).classList.add('act');
     document.querySelectorAll('.nav-i').forEach(e=>e.classList.remove('on'));
     document.getElementById(w=='monitor'?'n-mon':'n-edt').classList.add('on');
+    if(w==='edit') document.getElementById('rl').style.display='none';
+}
+function togReg(){
+    let d=document.getElementById('rl'); d.style.display=d.style.display==='block'?'none':'block';
 }
 function swM(){
     let m=document.getElementById('m-sel').value;
     document.getElementById('r-sel').style.display=m==='ACTION'?'block':'none';
     document.getElementById('r-name').style.display=m==='RULE'?'block':'none';
     if(m==='ACTION') renSel();
+    else document.getElementById('ed').value="# 示例代码\ns.balance = 1000\nreturn s";
 }
 function renSel(){
     let s=document.getElementById('r-sel'); s.innerHTML='';
@@ -131,9 +144,8 @@ function ldF(){
     document.getElementById('ed').value=JSON.stringify(o,null,2).replace(/"/g,"'");
 }
 async function sync(){
-    let rp=document.getElementById('repo').value, tk=document.getElementById('token').value;
-    let btn=document.getElementById('s-btn'); if(!rp||!tk)return;
-    btn.innerText="⏳";
+    let rp=document.getElementById('repo').value, tk=document.getElementById('token').value, btn=document.getElementById('s-btn');
+    if(!rp||!tk)return; btn.innerText="⏳";
     try{
         let cms=[], pg=1, h={'Authorization':`token ${tk}`};
         while(true){
@@ -142,23 +154,32 @@ async function sync(){
         }
         cms.reverse();
         let st={}, tl=document.getElementById('tl'); tl.innerHTML=''; reg={};
+        let rl=document.getElementById('rl'); rl.innerHTML='';
         for(let c of cms){
             let m=c.commit.message; if(!m.includes('|'))continue;
             let [hd, ...bd]=m.split('\n'), b=bd.join('\n').trim();
             let [ty, nm]=hd.split('|').map(s=>s.trim());
-            let card=document.createElement('div'), res="";
-            card.className=`tc t-${ty.charAt(0)}`;
+            let card=document.createElement('div'), res=""; card.className=`tc t-${ty.charAt(0)}`;
             if(ty==='RULE'){ reg[nm]=b; res=`⚖️ 定义法则\n${b}`; }
             else{
-                let p; try{p=window.eng.prs(b)}catch(e){p=null}
-                let ret=window.eng.run(reg[nm]||"", st, p||{});
+                let p; try{p=window.eng.prs(b)}catch(e){p={}}
+                let ret=window.eng.run(reg[nm]||"", st, p);
                 if(ret instanceof Error){ card.className+=" t-E"; res=`❌ 塌缩: ${ret.message}\n参数: ${b}`; }
-                else{ st=ret; res=`🚀 触发成功\n参数: ${b}`; }
+                else{ st=ret; res=`🚀 成功\n参数: ${b}`; }
             }
-            card.innerHTML=`<div class="th" onclick="this.nextElementSibling.classList.toggle('open')"><span>${nm}</span><span>${new Date(c.commit.author.date).toLocaleTimeString().slice(0,5)}</span></div><div class="tb">${res}</div>`;
+            card.innerHTML=`<div class="th" onclick="this.nextElementSibling.classList.toggle('open')"><span>${ty==='RULE'?'⚖️':'🚀'} ${nm}</span><span>${new Date(c.commit.author.date).toLocaleTimeString().slice(0,5)}</span></div><div class="tb">${res}</div>`;
             tl.insertBefore(card, tl.firstChild);
         }
         document.getElementById('st').innerText=JSON.stringify(st,null,2);
+        Object.keys(reg).forEach(k=>{
+            let d=document.createElement('div'); d.className='reg-i'; d.innerText=k;
+            d.onclick=()=>{
+                document.getElementById('m-sel').value='RULE'; swM();
+                document.getElementById('r-name').value=k; document.getElementById('ed').value=reg[k];
+                document.getElementById('rl').style.display='none';
+            };
+            rl.appendChild(d);
+        });
         renSel(); btn.innerText="🔄 同步";
     }catch(e){alert(e);btn.innerText="重试"}
 }
@@ -166,7 +187,7 @@ async function cmt(){
     let rp=document.getElementById('repo').value, tk=document.getElementById('token').value, btn=document.getElementById('c-btn');
     let m=document.getElementById('m-sel').value, b=document.getElementById('ed').value;
     let n=m==='ACTION'?document.getElementById('r-sel').value:document.getElementById('r-name').value;
-    if(!n)return alert('缺名称');
+    if(!n)return alert('请输入/选择名称');
     btn.innerText="写入..."; btn.disabled=true;
     try{
         let sha, r=await fetch(`https://api.github.com/repos/${rp}/contents/${LOG}`,{headers:{'Authorization':`token ${tk}`}});
@@ -176,7 +197,7 @@ async function cmt(){
             headers:{'Authorization':`token ${tk}`,'Content-Type':'application/json'},
             body:JSON.stringify({message:`${m} | ${n}\n\n${b}`,content:btoa(`T:${Date.now()}`),sha:sha})
         });
-        btn.innerText="✅"; setTimeout(()=>{btn.innerText="⚡ 写入因果";btn.disabled=false;sync()},800);
+        btn.innerText="✅"; setTimeout(()=>{btn.innerText="⚡ 写入因果";btn.disabled=false;sync();tab('monitor')},800);
     }catch(e){alert(e);btn.disabled=false}
 }
 </script>
