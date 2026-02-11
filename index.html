@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Provelance v8.2 - Full Spectrum</title>
+<title>Provelance v8.3 - Full Spectrum</title>
 <script src="https://cdn.jsdelivr.net/npm/brython@3/brython.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/brython@3/brython_stdlib.js"></script>
 <link href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism-tomorrow.min.css" rel="stylesheet" />
@@ -42,81 +42,42 @@ body{display:flex;flex-direction:column;height:100dvh}
 .form-label{font-size:11px;color:var(--purp);width:70px;font-weight:bold}
 .st-box{height:25%;max-height:180px;background:#000;border-top:1px solid var(--b);padding:10px;overflow:auto;font-size:12px;color:var(--bl);flex-shrink:0}
 
-/* === 核心修复：编辑器样式 === */
+/* 编辑器修复样式 */
 .editor-container{flex:1;position:relative;overflow:hidden;background:#000}
-
-/* 统一字体栈和排版属性，确保像素级对齐 */
-#ed, #hl-pre, #hl-code {
-    margin: 0;
-    padding: 16px;
-    font-size: 14px; /* 稍微调小一点，增强移动端可读性 */
-    line-height: 1.5;
-    /* 强制使用特定的等宽字体栈，避免 textarea 和 pre 渲染不一致 */
-    font-family: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace !important;
-    /* 统一 Tab 大小，解决缩进导致的错位 */
-    tab-size: 4 !important;
-    -moz-tab-size: 4 !important;
-    /* 统一换行规则 */
-    white-space: pre-wrap !important;
-    word-wrap: break-word !important;
-    word-break: break-all !important;
-    /* 禁用连字和自动调整，防止字符宽度变化 */
-    font-variant-ligatures: none;
-    letter-spacing: 0 !important;
-}
-
-#ed {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: transparent;
-    color: transparent; /* 文本透明 */
-    caret-color: #fff; /* 光标白色 */
-    z-index: 2;
-    resize: none;
-    overflow-y: auto;
-    border: none;
-    outline: none;
-    /* 移除文本阴影，防止透明文字产生鬼影 */
-    text-shadow: none !important;
-    -webkit-text-fill-color: transparent;
-}
-
-/* 解决双影问题：选中时强制文本颜色保持透明，只显示背景色 */
-#ed::selection {
-    background: rgba(88, 166, 255, 0.3); /* 半透明蓝色背景 */
-    color: transparent;
-    -webkit-text-fill-color: transparent;
-}
-
-#hl-pre {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1;
-    background: transparent;
-    pointer-events: none;
-    overflow: hidden; /* 滚动由 textarea 接管 */
-}
-
-#hl-code {
-    display: block;
-    color: #e6edf3;
-}
-
+#ed, #hl-pre, #hl-code {margin: 0;padding: 16px;font-size: 14px;line-height: 1.5;font-family: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace !important;tab-size: 4 !important;-moz-tab-size: 4 !important;white-space: pre-wrap !important;word-wrap: break-word !important;word-break: break-all !important;font-variant-ligatures: none;letter-spacing: 0 !important;}
+#ed {position: absolute;top: 0;left: 0;width: 100%;height: 100%;background: transparent;color: transparent;caret-color: #fff;z-index: 2;resize: none;overflow-y: auto;border: none;outline: none;text-shadow: none !important;-webkit-text-fill-color: transparent;}
+#ed::selection {background: rgba(88, 166, 255, 0.3);color: transparent;-webkit-text-fill-color: transparent;}
+#hl-pre {position: absolute;top: 0;left: 0;width: 100%;height: 100%;z-index: 1;background: transparent;pointer-events: none;overflow: hidden;}
+#hl-code {display: block;color: #e6edf3;}
 .toolbar{background:var(--c);padding:12px;border-bottom:1px solid var(--b);flex-shrink:0}
 .reg-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:10px;scrollbar-width:none}
 .reg-tag{background:var(--b);padding:5px 12px;border-radius:15px;font-size:12px;white-space:nowrap;color:var(--bl);border:1px solid #444}
 .act-bar{padding:12px;background:var(--c);border-top:1px solid var(--b);display:flex;justify-content:space-between;align-items:center}
 .t-R{border-left-color:var(--bl)} .t-A{border-left-color:var(--a)} .t-E{border-left-color:var(--r)}
-
-/* Prism 样式覆盖 */
 pre[class*="language-"]{margin:0;padding:0;background:transparent!important;overflow:visible!important}
 code[class*="language-"]{text-shadow:none!important;font-family:inherit!important}
+
+/* === 新增：同步提示样式 === */
+.sync-hint {
+    background: rgba(88, 166, 255, 0.08);
+    border: 1px dashed var(--bl);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    color: var(--bl);
+    margin-bottom: 12px;
+    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    animation: fadeIn 0.5s ease;
+}
+.sync-hint b { font-size: 14px; }
+.sync-arrow { font-size: 18px; animation: bounce 1.5s infinite; }
+
+@keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 </head>
 <body onload="brython();init()">
@@ -214,7 +175,6 @@ function tab(w){document.querySelectorAll('.view').forEach(e=>e.classList.remove
 
 function onEdInp(){
     let area = document.getElementById('ed'), code = document.getElementById('hl-code');
-    // 关键修正：确保尾部换行符处理一致，否则光标在最后一行会跳动
     let txt = area.value;
     if(txt.endsWith('\n')) txt += ' '; 
     code.textContent = txt;
@@ -288,6 +248,22 @@ function getDiffHtml(oldS, newS) {
     } catch(e) { return '<div style="color:var(--r)">Diff Error</div>'; }
 }
 
+// === 新增：显示同步提示 ===
+function showSyncHint() {
+    let tl = document.getElementById('tl');
+    // 如果已经有提示了，就不重复添加
+    if(document.querySelector('.sync-hint')) return;
+    
+    let hint = document.createElement('div');
+    hint.className = 'sync-hint';
+    hint.innerHTML = `
+        <div class="sync-arrow">📡 ▲</div>
+        <div><b>信号传输中...</b></div>
+        <div>请点击顶部“同步”以接入最新宇宙时间线</div>
+    `;
+    tl.insertBefore(hint, tl.firstChild);
+}
+
 async function sync(){
     let rp=document.getElementById('repo').value,tk=document.getElementById('token').value,btn=document.getElementById('s-btn');
     if(!rp||!tk)return; btn.innerText="..."; btn.disabled=true;
@@ -359,7 +335,16 @@ async function cmt(){
     try{
         let sha, r=await fetch(`https://api.github.com/repos/${rp}/contents/${LOG}`,{headers:{'Authorization':`token ${tk}`}}); if(r.ok)sha=(await r.json()).sha;
         await fetch(`https://api.github.com/repos/${rp}/contents/${LOG}`,{method:'PUT',headers:{'Authorization':`token ${tk}`,'Content-Type':'application/json'},body:JSON.stringify({message:`${m} | ${n}\n\n${b}`,content:btoa(`T:${Date.now()}`),sha:sha})});
-        btn.innerText="✅ OK"; setTimeout(()=>{btn.innerText="⚡ 写入";btn.disabled=false;sync();tab('monitor')},1000);
+        
+        // === 修改：不再自动 sync，而是显示提示 ===
+        btn.innerText="✅ OK"; 
+        setTimeout(()=>{
+            btn.innerText="⚡ 写入";
+            btn.disabled=false;
+            tab('monitor');
+            showSyncHint(); // 调用提示
+        },1000);
+        
     }catch(e){alert('Commit Error: '+e);btn.disabled=false}
 }
 </script>
