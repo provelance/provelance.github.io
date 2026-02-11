@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Provelance v7.2</title>
+<title>Provelance v7.5 - Smart Causal</title>
 <script src="https://cdn.jsdelivr.net/npm/brython@3/brython.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/brython@3/brython_stdlib.js"></script>
 <style>
@@ -26,21 +26,21 @@ body{display:flex;flex-direction:column;height:100dvh}
 .tc{background:var(--c);border:1px solid var(--b);border-radius:8px;margin-bottom:10px;font-size:13px;border-left:4px solid transparent}
 .th{padding:12px;display:flex;justify-content:space-between;align-items:center}
 .tb{padding:12px;border-top:1px solid var(--b);background:#00000033;font-size:12px;display:none;flex-direction:column;gap:10px}
-.tb-sec{background:#ffffff0a;padding:8px;border-radius:4px;position:relative}
+.tb-sec{background:#ffffff0a;padding:8px;border-radius:4px;position:relative;border-left:2px solid var(--b)}
 .tb-pre{margin:5px 0 0 0;white-space:pre-wrap;word-break:break-all;color:#8b949e;max-height:150px;overflow-y:auto}
-.cp-btn{position:absolute;top:5px;right:5px;background:var(--b);color:#ccc;border:none;padding:4px 8px;border-radius:4px;font-size:10px}
+.cp-btn{position:absolute;top:5px;right:5px;background:var(--b);color:#ccc;border:none;padding:4px 8px;border-radius:4px;font-size:10px;z-index:2}
 /* Diff Style */
-.diff-row{display:flex;justify-content:space-between;padding:2px 0;font-family:monospace}
+.diff-row{display:flex;justify-content:space-between;padding:2px 0;font-family:monospace;border-bottom:1px solid #ffffff05}
 .diff-k{color:#8b949e}
-.diff-v{display:flex;gap:8px;align-items:center}
-.v-old{text-decoration:line-through;opacity:0.5}
+.diff-v{display:flex;gap:8px;align-items:center;max-width:70%;overflow:hidden}
+.v-old{text-decoration:line-through;opacity:0.4;white-space:nowrap}
 .v-new.up{color:var(--a);font-weight:bold}
 .v-new.down{color:var(--r);font-weight:bold}
 .v-new.add{color:var(--bl)}
 /* Smart Form */
 .form-card{background:#1c2128;border:1px solid var(--purp);margin:12px;border-radius:8px;padding:12px;display:none;flex-direction:column;gap:10px}
 .form-row{display:flex;align-items:center;gap:10px}
-.form-label{font-size:11px;color:var(--purp);width:60px;overflow:hidden;text-overflow:ellipsis}
+.form-label{font-size:11px;color:var(--purp);width:70px;overflow:hidden;text-overflow:ellipsis;font-weight:bold}
 /* Editor Area */
 .st-box{height:25%;max-height:180px;background:#000;border-top:1px solid var(--b);padding:10px;overflow:auto;font-size:12px;color:var(--bl);flex-shrink:0}
 .toolbar{background:var(--c);padding:12px;border-bottom:1px solid var(--b);flex-shrink:0}
@@ -106,17 +106,24 @@ def get_schema(code):
         tree = ast.parse(code)
         params = {}
         for node in ast.walk(tree):
+            # 基础属性检测: p.name
             if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.value.id == 'p':
-                if node.attr not in params: params[node.attr] = []
+                if node.attr not in params: params[node.attr] = set()
+            
+            # 增强检测: p.name == 'val' 或 p.name in ['a', 'b']
             if isinstance(node, ast.Compare):
-                if isinstance(node.left, ast.Attribute) and node.left.value.id == 'p':
-                    p_name = node.left.attr
+                left = node.left
+                if isinstance(left, ast.Attribute) and isinstance(left.value, ast.Name) and left.value.id == 'p':
+                    p_name = left.attr
+                    if p_name not in params: params[p_name] = set()
                     for op, comp in zip(node.ops, node.comparators):
-                        if isinstance(op, (ast.Eq, ast.In)):
-                            if isinstance(comp, (ast.Constant, ast.Str)): 
-                                val = comp.value if hasattr(comp,'value') else comp.s
-                                if val not in params[p_name]: params[p_name].append(val)
-        return params
+                        if isinstance(op, ast.Eq) and isinstance(comp, ast.Constant):
+                            params[p_name].add(str(comp.value))
+                        elif isinstance(op, ast.In) and isinstance(comp, ast.List):
+                            for elt in comp.elts:
+                                if isinstance(elt, ast.Constant): params[p_name].add(str(elt.value))
+        
+        return {k: sorted(list(v)) for k, v in params.items()}
     except: return {}
 
 window.eng = {"run":py_run, "prs":lambda b:ast.literal_eval(b), "get_schema":get_schema}
@@ -154,8 +161,10 @@ function ldF(){
         let input;
         if(schema[pName].length > 0){
             input = document.createElement('select'); input.className='in';
-            schema[pName].forEach(opt => { let o=document.createElement('option'); o.text=opt; input.add(o)});
-        } else { input = document.createElement('input'); input.className='in'; input.placeholder='value'; }
+            // 增加默认空选项以便触发自定义输入
+            let empty = document.createElement('option'); empty.text="-- 选择 --"; empty.value=""; input.add(empty);
+            schema[pName].forEach(opt => { let o=document.createElement('option'); o.text=opt; o.value=opt; input.add(o)});
+        } else { input = document.createElement('input'); input.className='in'; input.placeholder='...'; }
         input.onchange = () => syncFormToCode();
         input.dataset.pname = pName;
         row.appendChild(lbl); row.appendChild(input); f.appendChild(row);
@@ -166,36 +175,43 @@ function syncFormToCode(){
     if(document.getElementById('m-sel').value !== 'ACTION') return;
     let params = {};
     document.querySelectorAll('#smart-form .in').forEach(i => {
-        let val = i.value; if(!isNaN(val) && val.trim()!=='') val = parseFloat(val);
+        let val = i.value; if(val === "") return;
+        if(!isNaN(val) && val.trim()!=='') val = parseFloat(val);
         params[i.dataset.pname] = val;
     });
     document.getElementById('ed').value = JSON.stringify(params, null, 2).replace(/"/g, "'");
 }
-function cp(btn, sel) {
-    const txt = btn.parentNode.querySelector(sel).innerText;
+function cp(btn, txt) {
     navigator.clipboard.writeText(txt).then(()=>{let raw=btn.innerText;btn.innerText="已复制!";setTimeout(()=>btn.innerText=raw,1500)});
 }
 
-// 核心函数：计算状态差异并生成 HTML
+// 通用状态对比：包含列表长度比对
 function getDiffHtml(oldS, newS) {
     let html = '<div style="padding:4px 0">';
     const keys = new Set([...Object.keys(oldS), ...Object.keys(newS)]);
+    let changed = false;
     keys.forEach(k => {
-        if (k === 'last_action' || k === 'orders') return; // 略过元数据
         let ov = oldS[k], nv = newS[k];
+        let displayOld = ov, displayNew = nv;
+
+        // 列表长度处理
+        if(Array.isArray(ov)) displayOld = `[${ov.length}]`;
+        if(Array.isArray(nv)) displayNew = `[${nv.length}]`;
+
         if (JSON.stringify(ov) === JSON.stringify(nv)) return;
         
+        changed = true;
         let cls = 'add', sym = '';
         if (typeof ov === 'number' && typeof nv === 'number') {
             cls = nv > ov ? 'up' : 'down';
             sym = nv > ov ? '▲' : '▼';
         }
         html += `<div class="diff-row"><span class="diff-k">${k}</span><span class="diff-v">
-            <span class="v-old">${ov !== undefined ? ov : ''}</span>
-            <span class="v-new ${cls}">${sym} ${nv}</span>
+            <span class="v-old">${ov !== undefined ? displayOld : ''}</span>
+            <span class="v-new ${cls}">${sym} ${displayNew}</span>
         </span></div>`;
     });
-    return html + '</div>';
+    return changed ? html + '</div>' : '<div style="color:#555;font-size:11px">无状态变动</div>';
 }
 
 async function sync(){
@@ -212,29 +228,34 @@ async function sync(){
             let m=c.commit.message; if(!m.includes('|'))continue;
             let [hd, ...bd]=m.split('\n'), b=bd.join('\n').trim();
             let [ty, nm]=hd.split('|').map(s=>s.trim());
-            let card=document.createElement('div'), resHtml="", isErr=false, codeStr="";
+            let card=document.createElement('div'), resHtml="", codeStr="";
             
             card.className=`tc t-${ty.charAt(0)}`;
             if(ty==='RULE'){ 
                 reg[nm]=b; 
-                resHtml=`<div class="tb-sec"><button class="cp-btn" onclick="cp(this,'.tb-pre')">📋 复制</button><pre class="tb-pre">${b}</pre></div>`;
+                resHtml=`<div class="tb-sec"><button class="cp-btn" onclick="cp(this,this.nextElementSibling.innerText)">📋 复制</button><pre class="tb-pre">${b}</pre></div>`;
             } else {
                 codeStr = reg[nm] || '# 未找到法则';
                 let p; try{p=window.eng.prs(b)}catch(e){p={}}
                 
-                // 捕获快照
                 let oldSt = JSON.parse(JSON.stringify(st));
                 let ret = window.eng.run(codeStr, st, p);
                 
                 if(typeof ret === 'string'){ 
                     card.className+=" t-E"; 
                     resHtml=`<div class="tb-sec"><pre class="tb-pre" style="color:var(--r)">❌ 塌缩: ${ret}</pre></div>`;
-                    isErr=true; 
                 } else {
                     st = ret;
                     let diff = getDiffHtml(oldSt, st);
-                    resHtml = `<div class="tb-sec" style="color:var(--y)">💬 ${st.last_action || '执行成功'}</div>
-                               <div class="tb-sec"><b>状态变化:</b>${diff || '<div style="color:#555;font-size:11px">无数值变动</div>'}</div>`;
+                    // 增加参数展示区
+                    resHtml = `
+                        <div class="tb-sec" style="border-left-color:var(--purp);margin-bottom:8px">
+                            <span style="font-size:10px;color:var(--purp);display:block">INPUT PARAMETERS:</span>
+                            <button class="cp-btn" onclick="cp(this,'${b.replace(/'/g,"\\'")}')">📋</button>
+                            <pre class="tb-pre" style="color:var(--t)">${b}</pre>
+                        </div>
+                        <div class="tb-sec" style="color:var(--y)">💬 ${st.last_action || 'OK'}</div>
+                        <div class="tb-sec"><b>状态变化:</b>${diff}</div>`;
                 }
             }
             card.innerHTML=`<div class="th" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='flex'?'none':'flex'">
