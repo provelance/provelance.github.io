@@ -3,9 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Provelance v7.8 - Clean State</title>
+<title>Provelance v7.9 - Radiant Code</title>
 <script src="https://cdn.jsdelivr.net/npm/brython@3/brython.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/brython@3/brython_stdlib.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism-tomorrow.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-core.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-python.min.js"></script>
 <style>
 :root{--bg:#0d1117;--c:#161b22;--b:#30363d;--t:#c9d1d9;--a:#238636;--bl:#58a6ff;--r:#da3633;--purp:#bc8cff;--y:#d29922}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;font-family:-apple-system,system-ui,monospace}
@@ -38,10 +41,17 @@ body{display:flex;flex-direction:column;height:100dvh}
 .form-row{display:flex;align-items:center;gap:10px}
 .form-label{font-size:11px;color:var(--purp);width:70px;font-weight:bold}
 .st-box{height:25%;max-height:180px;background:#000;border-top:1px solid var(--b);padding:10px;overflow:auto;font-size:12px;color:var(--bl);flex-shrink:0}
+
+/* 编辑器容器样式 */
+.editor-container{flex:1;position:relative;overflow:hidden;background:#000}
+#ed, #hl-pre{position:absolute;top:0;left:0;width:100%;height:100%;margin:0;padding:16px;font-size:15px;line-height:1.5;white-space:pre-wrap;word-break:break-all;border:none;outline:none}
+#ed{background:transparent;color:transparent;caret-color:#fff;z-index:2;resize:none;overflow-y:auto}
+#hl-pre{z-index:1;background:transparent;pointer-events:none;overflow:hidden}
+code[class*="language-"]{font-family:monospace!important}
+
 .toolbar{background:var(--c);padding:12px;border-bottom:1px solid var(--b);flex-shrink:0}
 .reg-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:10px;scrollbar-width:none}
 .reg-tag{background:var(--b);padding:5px 12px;border-radius:15px;font-size:12px;white-space:nowrap;color:var(--bl);border:1px solid #444}
-#ed{flex:1;background:transparent;color:#e6edf3;border:none;padding:16px;font-size:16px;resize:none;line-height:1.5}
 .act-bar{padding:12px;background:var(--c);border-top:1px solid var(--b);display:flex;justify-content:space-between;align-items:center}
 .t-R{border-left-color:var(--bl)} .t-A{border-left-color:var(--a)} .t-E{border-left-color:var(--r)}
 </style>
@@ -63,7 +73,10 @@ body{display:flex;flex-direction:column;height:100dvh}
             </div>
         </div>
         <div id="smart-form" class="form-card"></div>
-        <textarea id="ed" spellcheck="false" oninput="syncFormToCode()"></textarea>
+        <div class="editor-container">
+            <pre id="hl-pre"><code id="hl-code" class="language-python"></code></pre>
+            <textarea id="ed" spellcheck="false" oninput="onEdInp()" onscroll="onEdScr()"></textarea>
+        </div>
         <div class="act-bar"><span id="syn" style="color:var(--a);font-size:12px;font-weight:bold">● 就绪</span><button onclick="cmt()" id="c-btn" style="background:var(--a);color:#fff;border:none;padding:12px 35px;border-radius:8px;font-weight:bold;font-size:15px">⚡ 写入</button></div>
     </div>
 </div>
@@ -74,21 +87,14 @@ from browser import window
 import ast
 
 def clean_data(obj):
-    """递归深度清洗数据，彻底切断 Brython 与 JS 的循环引用和元数据残留"""
-    if isinstance(obj, dict):
-        return {str(k): clean_data(v) for k, v in obj.items()}
-    elif isinstance(obj, list) or hasattr(obj, 'append'):
-        return [clean_data(x) for x in list(obj)]
-    elif isinstance(obj, (int, float, str, bool)) or obj is None:
-        return obj
-    elif hasattr(obj, 'to_dict'):
-        return clean_data(obj.to_dict())
-    else:
-        return str(obj)
+    if isinstance(obj, dict): return {str(k): clean_data(v) for k, v in obj.items()}
+    elif isinstance(obj, list) or hasattr(obj, 'append'): return [clean_data(x) for x in list(obj)]
+    elif isinstance(obj, (int, float, str, bool)) or obj is None: return obj
+    elif hasattr(obj, 'to_dict'): return clean_data(obj.to_dict())
+    else: return str(obj)
 
 class StateProxy:
-    def __init__(self, d):
-        self._d = d if isinstance(d, dict) else (d.to_dict() if hasattr(d, 'to_dict') else dict(d))
+    def __init__(self, d): self._d = d if isinstance(d, dict) else dict(d)
     def __getattr__(self, k):
         if k == 'get': return self._d.get
         return self._d.get(k, 0)
@@ -98,43 +104,26 @@ class StateProxy:
 
 def py_run(code, state_in, params_in):
     try:
-        # 预清洗输入，确保是在纯 Python 字典上操作
-        raw_s = clean_data(state_in)
-        raw_p = clean_data(params_in)
-        s, p = StateProxy(raw_s), StateProxy(raw_p)
-        
-        env = {'s': s, 'p': p, 'int': int, 'float': float, 'round': round, 
-               'abs': abs, 'max': max, 'min': min, 'list': list, 'dict': dict}
-        exec(code, env)
-        
-        # 结果深度脱壳
+        s, p = StateProxy(clean_data(state_in)), StateProxy(clean_data(params_in))
+        exec(code, {'s':s,'p':p,'int':int,'float':float,'round':round,'abs':abs,'max':max,'min':min,'list':list,'dict':dict})
         return clean_data(s._d)
-    except Exception as e:
-        return str(e)
+    except Exception as e: return str(e)
 
 def get_schema(code):
     try:
-        tree = ast.parse(code)
-        params, aliases = {}, {}
+        tree, params, aliases = ast.parse(code), {}, {}
         for node in ast.walk(tree):
             if isinstance(node, ast.Assign):
                 v = node.value
-                if isinstance(v, ast.Attribute) and getattr(v.value, 'id', '') == 'p':
+                if isinstance(v, ast.Attribute) and getattr(v.value,'id','')=='p':
                     for t in node.targets:
                         if isinstance(t, ast.Name): aliases[t.id] = v.attr
-                elif isinstance(v, ast.Call) and len(v.args) > 0:
-                    a = v.args[0]
-                    if isinstance(a, ast.Attribute) and getattr(a.value, 'id', '') == 'p':
-                        for t in node.targets:
-                            if isinstance(t, ast.Name): aliases[t.id] = a.attr
-            if isinstance(node, ast.Attribute) and getattr(node.value, 'id', '') == 'p':
+            if isinstance(node, ast.Attribute) and getattr(node.value,'id','')=='p':
                 if node.attr not in params: params[node.attr] = set()
             if isinstance(node, ast.Compare):
                 p_name = None
-                if isinstance(node.left, ast.Attribute) and getattr(node.left.value, 'id', '') == 'p':
-                    p_name = node.left.attr
-                elif isinstance(node.left, ast.Name) and node.left.id in aliases:
-                    p_name = aliases[node.left.id]
+                if isinstance(node.left, ast.Attribute) and getattr(node.left.value,'id','')=='p': p_name = node.left.attr
+                elif isinstance(node.left, ast.Name) and node.left.id in aliases: p_name = aliases[node.left.id]
                 if p_name:
                     if p_name not in params: params[p_name] = set()
                     for op, cp in zip(node.ops, node.comparators):
@@ -159,12 +148,26 @@ function init(){
 }
 function sv(){localStorage.setItem('pr',document.getElementById('repo').value);localStorage.setItem('pt',document.getElementById('token').value)}
 function tab(w){document.querySelectorAll('.view').forEach(e=>e.classList.remove('act'));document.getElementById('v-'+w).classList.add('act');document.querySelectorAll('.nav-i').forEach(e=>e.classList.remove('on'));document.getElementById(w=='monitor'?'n-mon':'n-edt').classList.add('on')}
+
+// 编辑器逻辑
+function onEdInp(){
+    let area = document.getElementById('ed'), code = document.getElementById('hl-code');
+    // 如果是 ACTION 模式，尝试美化
+    code.innerText = area.value + (area.value.endsWith('\n') ? ' ' : '');
+    Prism.highlightElement(code);
+}
+function onEdScr(){
+    let area = document.getElementById('ed'), pre = document.getElementById('hl-pre');
+    pre.scrollTop = area.scrollTop;
+    pre.scrollLeft = area.scrollLeft;
+}
+
 function swM(){
     let m=document.getElementById('m-sel').value;
     document.getElementById('r-sel').style.display=m==='ACTION'?'block':'none';
     document.getElementById('r-name').style.display=m==='RULE'?'block':'none';
     document.getElementById('smart-form').style.display=m==='ACTION'?'flex':'none';
-    if(m==='ACTION')renSel(); else document.getElementById('ed').value="";
+    if(m==='ACTION')renSel(); else { document.getElementById('ed').value=""; onEdInp(); }
 }
 function renSel(){
     let s=document.getElementById('r-sel');s.innerHTML='';
@@ -173,8 +176,7 @@ function renSel(){
 }
 function ldF(){
     let k=document.getElementById('r-sel').value; if(!k||!reg[k])return;
-    let schema = window.eng.get_schema(reg[k]);
-    let f = document.getElementById('smart-form'); f.innerHTML='';
+    let schema = window.eng.get_schema(reg[k]), f = document.getElementById('smart-form'); f.innerHTML='';
     Object.keys(schema).forEach(pName => {
         let row = document.createElement('div'); row.className='form-row';
         let lbl = document.createElement('div'); lbl.className='form-label'; lbl.innerText=pName;
@@ -199,10 +201,9 @@ function syncFormToCode(){
         params[i.dataset.pname] = val;
     });
     document.getElementById('ed').value = JSON.stringify(params, null, 2).replace(/"/g, "'");
+    onEdInp();
 }
-function cp(btn, txt) {
-    navigator.clipboard.writeText(txt).then(()=>{let raw=btn.innerText;btn.innerText="已复制!";setTimeout(()=>btn.innerText=raw,1500)});
-}
+function cp(btn, txt) { navigator.clipboard.writeText(txt).then(()=>{let raw=btn.innerText;btn.innerText="已复制!";setTimeout(()=>btn.innerText=raw,1500)}) }
 
 function getDiffHtml(oldS, newS) {
     try {
@@ -216,14 +217,8 @@ function getDiffHtml(oldS, newS) {
             let dOld = Array.isArray(ov) ? `[${ov.length}]` : (typeof ov === 'object' ? '{...}' : ov);
             let dNew = Array.isArray(nv) ? `[${nv.length}]` : (typeof nv === 'object' ? '{...}' : nv);
             let cls = 'add', sym = '';
-            if (typeof ov === 'number' && typeof nv === 'number') {
-                cls = nv > ov ? 'up' : 'down';
-                sym = nv > ov ? '▲' : '▼';
-            }
-            html += `<div class="diff-row"><span class="diff-k">${k}</span><span class="diff-v">
-                <span class="v-old">${ov !== undefined ? dOld : ''}</span>
-                <span class="v-new ${cls}">${sym} ${dNew}</span>
-            </span></div>`;
+            if (typeof ov === 'number' && typeof nv === 'number') { cls = nv > ov ? 'up' : 'down'; sym = nv > ov ? '▲' : '▼'; }
+            html += `<div class="diff-row"><span class="diff-k">${k}</span><span class="diff-v"><span class="v-old">${ov!==undefined?dOld:''}</span><span class="v-new ${cls}">${sym} ${dNew}</span></span></div>`;
         });
         return changed ? html + '</div>' : '<div style="color:#555;font-size:11px">无变动</div>';
     } catch(e) { return '<div style="color:var(--r)">Diff Error</div>'; }
@@ -247,21 +242,15 @@ async function sync(){
             } else {
                 codeStr = reg[nm] || '# Rule Missing';
                 let p; try{p=window.eng.prs(b)}catch(e){p={}}
-                let oldSt = JSON.parse(JSON.stringify(st));
-                let ret = window.eng.run(codeStr, st, p);
+                let oldSt = JSON.parse(JSON.stringify(st)), ret = window.eng.run(codeStr, st, p);
                 if(typeof ret === 'string'){ card.className+=" t-E"; resHtml=`<div class="tb-sec"><pre class="tb-pre" style="color:var(--r)">❌ ${ret}</pre></div>`;
-                } else {
-                    st = ret;
-                    resHtml = `<div class="tb-sec" style="border-left-color:var(--purp);margin-bottom:8px"><span style="font-size:10px;color:var(--purp)">INPUT:</span><pre class="tb-pre">${b}</pre></div>
-                               <div class="tb-sec" style="color:var(--y)">💬 ${st.last_action || 'OK'}</div>
-                               <div class="tb-sec"><b>状态变化:</b>${getDiffHtml(oldSt, st)}</div>`;
-                }
+                } else { st = ret; resHtml = `<div class="tb-sec" style="border-left-color:var(--purp);margin-bottom:8px"><span style="font-size:10px;color:var(--purp)">INPUT:</span><pre class="tb-pre">${b}</pre></div><div class="tb-sec" style="color:var(--y)">💬 ${st.last_action || 'OK'}</div><div class="tb-sec"><b>状态变化:</b>${getDiffHtml(oldSt, st)}</div>`; }
             }
             card.innerHTML=`<div class="th" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='flex'?'none':'flex'"><span>${ty==='RULE'?'⚖️':'🚀'} <b>${nm}</b></span><span style="color:#666;font-size:11px">${new Date(c.commit.author.date).toLocaleTimeString().slice(0,5)}</span></div><div class="tb">${resHtml}</div>`;
             tl.insertBefore(card, tl.firstChild);
         }
         document.getElementById('st').innerText=JSON.stringify(st,null,2);
-        Object.keys(reg).forEach(k=>{let t=document.createElement('span');t.className='reg-tag';t.innerText=k;t.onclick=()=>{document.getElementById('m-sel').value='RULE';swM();document.getElementById('r-name').value=k;document.getElementById('ed').value=reg[k];tab('edit')};sc.appendChild(t)});
+        Object.keys(reg).forEach(k=>{let t=document.createElement('span');t.className='reg-tag';t.innerText=k;t.onclick=()=>{document.getElementById('m-sel').value='RULE';swM();document.getElementById('r-name').value=k;document.getElementById('ed').value=reg[k];onEdInp();tab('edit')};sc.appendChild(t)});
         renSel(); btn.innerText="同步"; btn.disabled=false;
     }catch(e){alert('Sync Error: '+e);btn.innerText="Retry";btn.disabled=false}
 }
